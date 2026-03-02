@@ -10,53 +10,146 @@ Daisy Seed用の開発シミュレータ。
 | **Full Emulation Mode** | PCのみで完結。Daisy Seed含め全てをソフトウェアエミュレーション | 開発初期、デバッグ、実機なしでの動作確認 |
 | **IO Emulation Mode** | USB接続した実機と連携。PCがI/O（ノブ、OLED等）をエミュレート | 実機でのテスト、ハードウェア検証（将来実装）|
 
-## 必要環境
+---
 
-- CMake 3.16+
-- C++17対応コンパイラ
-- SDL2
-- OpenGL 3.3+
-- PortAudio（オプション、オーディオI/O用）
+## Windows セットアップ
 
-### Ubuntu/Debian
+### 1. 必要ツールのインストール
+
+**MSYS2 + MinGW-w64 ツールチェーン**（自動セットアップスクリプトあり）:
+
+```powershell
+# PowerShellで実行（管理者権限不要）
+scripts\setup_windows.ps1
+```
+
+または手動で:
+
+```powershell
+# MSYS2をインストール（winget使用）
+winget install MSYS2.MSYS2
+
+# MSYS2 UCRT64ターミナルを開いて実行
+pacman -S mingw-w64-ucrt-x86_64-gcc `
+          mingw-w64-ucrt-x86_64-cmake `
+          mingw-w64-ucrt-x86_64-ninja `
+          mingw-w64-ucrt-x86_64-SDL2 `
+          mingw-w64-ucrt-x86_64-portaudio `
+          mingw-w64-ucrt-x86_64-pkgconf
+```
+
+### 2. DaisyExamplesのクローン（DaisySP統合用）
+
+```bash
+# MSYS2 UCRT64ターミナルで実行
+git clone https://github.com/electro-smith/DaisyExamples ~/ws/DaisyExamples
+cd ~/ws/DaisyExamples
+git submodule update --init DaisySP
+```
+
+### 3. ローカル設定ファイルの作成
+
+`config/local.cmake` を作成（`.gitignore`対象、各自の環境に合わせて編集）:
+
+```cmake
+# config/local.cmake
+set(DAISY_EXAMPLES_PATH "C:/Users/<あなたのユーザー名>/ws/DaisyExamples" CACHE PATH "" FORCE)
+set(USE_DAISYSP ON CACHE BOOL "" FORCE)
+
+# ASIO対応PortAudioを使う場合（省略可）
+if(WIN32)
+    set(CUSTOM_PORTAUDIO_PATH "C:/Users/<あなたのユーザー名>/ws/portaudio" CACHE PATH "" FORCE)
+endif()
+```
+
+### 4. ビルド
+
+MSYS2 UCRT64ターミナルで:
+
+```bash
+cd /c/Users/<ユーザー名>/ws/daisy_sim/simulator
+mkdir build_win && cd build_win
+
+cmake .. -G "Ninja" \
+  -DCMAKE_C_COMPILER=gcc \
+  -DCMAKE_CXX_COMPILER=g++
+
+ninja
+```
+
+### 5. 実行
+
+```bash
+# MSYS2ターミナルから
+./DaisySim.exe
+
+# またはエクスプローラーから
+simulator\build_win\run_simulator.bat
+```
+
+---
+
+## ASIO対応（超低レイテンシ）
+
+標準PortAudioよりもさらに低レイテンシが必要な場合、ASIOを有効にできます。
+
+### ASIOドライバの準備
+
+いずれかをインストール:
+- **[ASIO4ALL](https://www.asio4all.org/)** — 汎用ドライバ（フリー、一般的なサウンドカード対応）
+- メーカー製ドライバ（Focusrite、Native Instruments等の専用機器）
+
+### ASIO対応PortAudioのビルド
+
+```bash
+# ASIO SDKの取得
+git clone https://github.com/audiosdk/asio ~/ws/asiosdk
+
+# PortAudioをソースからビルド
+git clone https://github.com/PortAudio/portaudio ~/ws/portaudio
+cd ~/ws/portaudio && mkdir build_win && cd build_win
+
+cmake .. -G "Ninja" \
+  -DCMAKE_C_COMPILER=gcc \
+  -DCMAKE_CXX_COMPILER=g++ \
+  -DBUILD_SHARED_LIBS=ON \
+  -DPA_USE_ASIO=ON \
+  -DPA_USE_WASAPI=ON
+
+ninja
+
+# ビルドしたDLLをコピー
+cp libportaudio.dll /c/Users/<ユーザー名>/ws/daisy_sim/simulator/build_win/
+```
+
+`config/local.cmake` に `CUSTOM_PORTAUDIO_PATH` を設定後、DaisySimを再ビルドすると
+ASIOが有効になります。
+
+### シミュレータでのASIO設定
+
+起動後、**`Audio Settings [+]`** → **Host Mode: ASIO** → **Apply & Restart Audio**
+
+| モード | レイテンシ目安 | 備考 |
+|--------|--------------|------|
+| Default (WASAPI Shared) | 10〜30ms | 追加設定不要 |
+| WASAPI Exclusive | 3〜10ms | ASIOドライバ不要 |
+| ASIO | 1〜5ms | ASIOドライバ必要 |
+
+---
+
+## Ubuntu/Debian セットアップ
 
 ```bash
 sudo apt install cmake build-essential libsdl2-dev libgl1-mesa-dev libportaudio2 portaudio19-dev
-```
 
-## ビルド方法
-
-### 基本ビルド（オーディオなし）
-
-```bash
 cd simulator
 mkdir build && cd build
-cmake .. -DUSE_PORTAUDIO=OFF
+cmake ..
 make -j$(nproc)
 ./DaisySim
 ```
 
-### オーディオ有効
-
-```bash
-cmake .. -DUSE_PORTAUDIO=ON
-make -j$(nproc)
-```
-
-### DaisySP統合
-
-DaisySPを使用する場合は、DaisyExamplesのパスを指定：
-
-```bash
-cmake .. -DUSE_DAISYSP=ON -DDAISY_EXAMPLES_PATH=/path/to/DaisyExamples
-```
-
-または、`config/local.cmake`を作成して設定：
-
-```bash
-cp config/local.cmake.example config/local.cmake
-# local.cmakeを編集してDAISY_EXAMPLES_PATHを設定
-```
+---
 
 ## プロジェクト構成
 
@@ -67,22 +160,23 @@ daisy_sim/
 │   ├── include/        # ヘッダファイル
 │   ├── external/       # ImGui等の外部ライブラリ
 │   └── CMakeLists.txt
-├── standalone/          # スタンドアロンサンプル
-├── config/             # 設定ファイル
-│   └── local.cmake.example
+├── config/             # 設定ファイル（local.cmakeはgitignore対象）
+├── scripts/            # セットアップスクリプト
+│   └── setup_windows.ps1
 └── docs/               # ドキュメント
 ```
 
 ## 使い方
 
-シミュレータは以下の機能を提供：
-
-- **OLED Display**: 128x64エミュレーション
-- **Knobs**: 4つのポテンショメータ
-- **Switches**: 4つのスイッチ
-- **Encoder**: ロータリーエンコーダ
-- **Waveform**: 入力波形表示
-- **Console**: デバッグログ
+| 操作 | 機能 |
+|------|------|
+| **SPACE** | オーディオ開始/停止（マイク入力） |
+| **Knob 1** | Delay Time（0.05s〜2.0s） |
+| **Knob 2** | Feedback（0〜90%） |
+| **Knob 3** | Tone filter |
+| **Knob 4** | Dry/Wet Mix |
+| **Switch 1** | Bypass |
+| **ESC** | 終了 |
 
 ## ライセンス
 

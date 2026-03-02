@@ -28,10 +28,24 @@ set(DAISY_EXAMPLES_PATH "" CACHE PATH "Path to DaisyExamples directory")
 # ==============================================================================
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED sdl2)
-pkg_check_modules(GL REQUIRED gl)
+
+# OpenGL: on Windows use the system opengl32; on Linux use pkg-config
+if(WIN32)
+    set(GL_LIBRARIES opengl32)
+    set(GL_INCLUDE_DIRS "")
+else()
+    pkg_check_modules(GL REQUIRED gl)
+endif()
 
 if(USE_PORTAUDIO)
-    pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+    if(DEFINED CUSTOM_PORTAUDIO_PATH AND WIN32)
+        # Use custom PortAudio build that includes ASIO support
+        set(PORTAUDIO_INCLUDE_DIRS "${CUSTOM_PORTAUDIO_PATH}/include")
+        set(PORTAUDIO_LIBRARIES    "${CUSTOM_PORTAUDIO_PATH}/build_win/libportaudio.dll.a")
+        message(STATUS "Custom PortAudio (ASIO): ${CUSTOM_PORTAUDIO_PATH}")
+    else()
+        pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+    endif()
     add_definitions(-DUSE_PORTAUDIO)
 endif()
 

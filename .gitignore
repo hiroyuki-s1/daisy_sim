@@ -1,5 +1,8 @@
 # Build directories
 build/
+build_win/
+simulator/build/
+simulator/build_win/
 cmake-build-*/
 
 # Local configuration (user-specific)
@@ -17,6 +20,9 @@ config/local.cmake
 *.a
 *.so
 *.dylib
+
+# Claude Code project files
+.claude/
 
 # OS
 .DS_Store

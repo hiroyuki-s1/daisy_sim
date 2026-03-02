@@ -77,23 +77,55 @@ bool App::Init() {
         Log("Failed to initialize HAL", "ERROR");
     }
 
-    // Initialize Audio Engine
-    audio_engine_ = std::make_unique<AudioEngine>();
-    if (!audio_engine_->Init(48000, 256)) {
-        Log("Failed to initialize audio engine", "ERROR");
-    }
-
     // Initialize DSP Processor
     dsp_processor_ = std::make_unique<DSPProcessor>();
     dsp_processor_->Init(48000);
 
-    // Initialize DaisySP Effect
+    // Initialize DaisySP Effect (must be before audio engine start)
     daisysp_effect_ = std::make_unique<DaisySPEffect>();
     daisysp_effect_->Init(48000);
-    daisysp_effect_->SetType(EffectType::OVERDRIVE);
+    daisysp_effect_->SetType(EffectType::DELAY);
+
+    // Initialize Audio Engine with small buffer for near-zero latency
+    // 64 samples @ 48kHz = 1.33ms processing latency
+    audio_engine_ = std::make_unique<AudioEngine>();
+    if (!audio_engine_->Init(48000, 64)) {
+        Log("Failed to initialize audio engine", "ERROR");
+    }
+
+    // Wire mic -> delay effect -> output
+    audio_engine_->SetCallback([this](const float* in, float* out, size_t frames) {
+        // Fixed-size stack buffers (max 256 frames, no heap alloc in RT thread)
+        float in_l[256]  = {};
+        float in_r[256]  = {};
+        float out_l[256] = {};
+        float out_r[256] = {};
+
+        size_t n = frames < 256 ? frames : 256;
+
+        // Deinterleave stereo input
+        for (size_t i = 0; i < n; i++) {
+            in_l[i] = in ? in[i * 2]     : 0.0f;
+            in_r[i] = in ? in[i * 2 + 1] : 0.0f;
+        }
+
+        // Process through selected effect
+        daisysp_effect_->Process(in_l, in_r, out_l, out_r, n);
+
+        // Reinterleave output
+        for (size_t i = 0; i < n; i++) {
+            out[i * 2]     = out_l[i];
+            out[i * 2 + 1] = out_r[i];
+        }
+
+        // Update waveform display buffer (non-critical, display thread reads this)
+        for (size_t i = 0; i < n && i < WAVEFORM_SIZE; i++) {
+            waveform_buffer_[i] = out_l[i];
+        }
+    });
 
     Log("Simulator initialized (Full Emulation Mode)", "INFO");
-    Log("Audio: 48000 Hz, 256 samples buffer", "DEBUG");
+    Log("Audio: 48kHz / 64 samples (~1.3ms latency) / Delay effect", "INFO");
 
     running_ = true;
     return true;
@@ -187,37 +219,23 @@ void App::Update() {
         dsp_processor_->SetBypass(switch_states_[0]);
     }
 
-    // Update DaisySP effect parameters
+    // Update DaisySP effect parameters from knobs
     if (daisysp_effect_) {
+        // knob 0 = Time/Drive/Rate/Time  (param 0)
+        // knob 1 = Fdbk/Damp/Depth/Fdbk (param 1)
+        // knob 2 = Tone/Size/Delay/Tone  (param 2)
+        // knob 3 = Mix                    (wet/dry)
         daisysp_effect_->SetParameter(0, knob_values_[0]);
         daisysp_effect_->SetParameter(1, knob_values_[1]);
+        daisysp_effect_->SetParameter(2, knob_values_[2]);
         daisysp_effect_->SetMix(knob_values_[3]);
         daisysp_effect_->SetBypass(switch_states_[0]);
     }
 
-    // Update waveform buffer (simulated)
+    // Waveform buffer is filled by the audio callback with real mic data.
+    // Just update CPU usage estimate here.
     if (audio_running_) {
-        static float phase = 0.0f;
-        float freq = 2.0f;
-        float drive = knob_values_[0];
-
-        for (size_t i = 0; i < WAVEFORM_SIZE; i++) {
-            float t = phase + (float)i / WAVEFORM_SIZE * freq * 2.0f * M_PI;
-            float sample = std::sin(t);
-
-            // Add harmonics based on drive
-            sample += std::sin(t * 2.0f) * 0.3f * drive;
-            sample += std::sin(t * 3.0f) * 0.15f * drive;
-
-            // Soft clipping
-            sample = std::tanh(sample * (1.0f + drive * 2.0f));
-
-            waveform_buffer_[i] = sample * (0.5f + drive * 0.5f);
-        }
-        phase += 0.1f;
-        if (phase > 2.0f * M_PI) phase -= 2.0f * M_PI;
-
-        cpu_usage_ = 5.0f + (float)(rand() % 100) / 10.0f;
+        cpu_usage_ = 5.0f + (float)(rand() % 30) / 10.0f;
     } else {
         cpu_usage_ = 0.0f;
     }
@@ -330,6 +348,7 @@ void App::RenderMainWindow() {
     ImGui::EndGroup();
 
     ImGui::Spacing();
+    RenderAudioSettings();
     RenderConsole();
 
     ImGui::Columns(1);
@@ -676,6 +695,144 @@ void App::RenderMeters() {
     }
 }
 
+void App::RenderAudioSettings() {
+    // Toggle button
+    if (ImGui::Button(show_audio_settings_ ? "Audio Settings [-]" : "Audio Settings [+]",
+                      ImVec2(160, 0))) {
+        show_audio_settings_ = !show_audio_settings_;
+    }
+
+    if (!show_audio_settings_) return;
+
+    ImGui::Indent(10.0f);
+
+    const char* mode_items[] = {
+        "Default (WASAPI Shared)",
+        "ASIO (ultra-low latency)",
+        "WASAPI Exclusive (low latency)",
+        "WASAPI Shared",
+    };
+    ImGui::Text("Host Mode:");
+    ImGui::SetNextItemWidth(220);
+    ImGui::Combo("##hostmode", &audio_mode_sel_, mode_items, 4);
+
+    bool is_asio = (audio_mode_sel_ == 1);
+
+    // Build device name arrays
+    const auto& in_devs  = audio_engine_->GetInputDevices();
+    const auto& out_devs = audio_engine_->GetOutputDevices();
+
+    if (is_asio) {
+        // For ASIO: single device selector
+        std::vector<const char*> asio_names;
+        std::vector<int>         asio_pa_indices;
+        for (const auto& d : out_devs) {
+            if (d.host_api_type == 3 /*paASIO*/) {
+                asio_names.push_back(d.name.c_str());
+                asio_pa_indices.push_back(d.pa_index);
+            }
+        }
+
+        if (asio_names.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f),
+                               "No ASIO drivers found.");
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                               "Install an ASIO driver (ASIO4ALL, manufacturer driver).");
+        } else {
+            if (audio_input_sel_ >= (int)asio_names.size()) audio_input_sel_ = 0;
+            ImGui::Text("ASIO Device:");
+            ImGui::SetNextItemWidth(220);
+            ImGui::Combo("##asiodev", &audio_input_sel_,
+                         asio_names.data(), (int)asio_names.size());
+
+            if (ImGui::Button("ASIO Control Panel")) {
+                audio_engine_->ShowASIOControlPanel();
+            }
+        }
+    } else {
+        // Separate input/output selectors
+        std::vector<const char*> in_names, out_names;
+        for (const auto& d : in_devs)  in_names.push_back(d.name.c_str());
+        for (const auto& d : out_devs) out_names.push_back(d.name.c_str());
+
+        if (audio_input_sel_  >= (int)in_names.size())  audio_input_sel_  = 0;
+        if (audio_output_sel_ >= (int)out_names.size()) audio_output_sel_ = 0;
+
+        ImGui::Text("Input Device:");
+        ImGui::SetNextItemWidth(220);
+        if (!in_names.empty())
+            ImGui::Combo("##indev", &audio_input_sel_,
+                         in_names.data(), (int)in_names.size());
+
+        ImGui::Text("Output Device:");
+        ImGui::SetNextItemWidth(220);
+        if (!out_names.empty())
+            ImGui::Combo("##outdev", &audio_output_sel_,
+                         out_names.data(), (int)out_names.size());
+    }
+
+    ImGui::Spacing();
+
+    // Apply & Restart button
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+    if (ImGui::Button("Apply & Restart Audio", ImVec2(180, 0))) {
+        bool was_running = audio_running_;
+        if (was_running) {
+            audio_engine_->Stop();
+        }
+
+        // Apply host mode
+        static const AudioHostMode mode_map[] = {
+            AudioHostMode::Default,
+            AudioHostMode::ASIO,
+            AudioHostMode::WASAPI_Exclusive,
+            AudioHostMode::WASAPI_Shared,
+        };
+        audio_engine_->SetHostMode(mode_map[audio_mode_sel_]);
+
+        // Apply device selection
+        const auto& in_devs2  = audio_engine_->GetInputDevices();
+        const auto& out_devs2 = audio_engine_->GetOutputDevices();
+
+        if (audio_mode_sel_ == 1 /*ASIO*/) {
+            // ASIO: find the selected ASIO device
+            int asio_idx = 0;
+            for (const auto& d : out_devs2) {
+                if (d.host_api_type == 3 /*paASIO*/) {
+                    if (asio_idx == audio_input_sel_) {
+                        audio_engine_->SetInputDevice(d.pa_index);
+                        audio_engine_->SetOutputDevice(d.pa_index);
+                        break;
+                    }
+                    asio_idx++;
+                }
+            }
+        } else {
+            int in_idx  = (audio_input_sel_  < (int)in_devs2.size())  ? audio_input_sel_  : 0;
+            int out_idx = (audio_output_sel_ < (int)out_devs2.size()) ? audio_output_sel_ : 0;
+            audio_engine_->SetInputDevice(
+                in_devs2.empty()  ? -1 : in_devs2[in_idx].pa_index);
+            audio_engine_->SetOutputDevice(
+                out_devs2.empty() ? -1 : out_devs2[out_idx].pa_index);
+        }
+
+        if (was_running) {
+            audio_engine_->Start();
+            Log("Audio restarted with new settings", "INFO");
+        } else {
+            Log("Audio settings updated (start with SPACE)", "INFO");
+        }
+    }
+    ImGui::PopStyleColor();
+
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.0f, 0.8f, 0.5f, 1.0f),
+                       "Latency: %.2f ms", audio_engine_->GetActualLatencyMs());
+
+    ImGui::Unindent(10.0f);
+    ImGui::Spacing();
+}
+
 void App::RenderConsole() {
     ImGui::Text("Console");
     ImGui::SameLine(ImGui::GetColumnWidth() - 60);
@@ -712,14 +869,19 @@ void App::RenderStatusBar() {
     ImGui::SameLine();
     ImGui::Text("%s", audio_running_ ? "Audio Running" : "Full Emulation Ready");
 
-    ImGui::SameLine(ImGui::GetWindowWidth() - 400);
+    ImGui::SameLine(ImGui::GetWindowWidth() - 440);
     ImGui::Text("CPU: %.1f%%", cpu_usage_);
     ImGui::SameLine();
-    ImGui::Text("| Buffer: 256");
+    ImGui::Text("| Buffer: %d", audio_engine_->GetBufferSize());
     ImGui::SameLine();
-    ImGui::Text("| Latency: 5.3ms");
+    float latency = audio_engine_->GetActualLatencyMs();
+    if (latency > 0.0f)
+        ImGui::Text("| Latency: %.1fms", latency);
+    else
+        ImGui::Text("| Latency: ~%.1fms",
+                    audio_engine_->GetBufferSize() * 1000.0f / audio_engine_->GetSampleRate());
     ImGui::SameLine();
-    ImGui::Text("| 48kHz / 32bit");
+    ImGui::Text("| %dkHz / 32bit", audio_engine_->GetSampleRate() / 1000);
 }
 
 void App::Log(const std::string& message, const std::string& level) {

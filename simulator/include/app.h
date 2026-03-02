@@ -41,6 +41,7 @@ private:
     void RenderMeters();
     void RenderConsole();
     void RenderStatusBar();
+    void RenderAudioSettings();
 
     void Log(const std::string& message, const std::string& level = "INFO");
 
@@ -64,7 +65,7 @@ private:
     bool switch_states_[4] = {true, false, false, false};
     int encoder_position_ = 0;
     bool audio_running_ = false;
-    int current_effect_type_ = 0;  // 0=Overdrive, 1=Reverb, 2=Chorus, 3=Delay
+    int current_effect_type_ = 3;  // 0=Overdrive, 1=Reverb, 2=Chorus, 3=Delay
 
     // Console log
     struct LogEntry {
@@ -77,6 +78,12 @@ private:
     // Waveform buffer
     static const size_t WAVEFORM_SIZE = 512;
     float waveform_buffer_[WAVEFORM_SIZE] = {0};
+
+    // Audio settings UI state
+    bool show_audio_settings_ = false;
+    int  audio_mode_sel_   = 0;  // index into AudioHostMode enum
+    int  audio_input_sel_  = 0;  // index into input_devices_ vector
+    int  audio_output_sel_ = 0;  // index into output_devices_ vector
 
     // Performance
     float cpu_usage_ = 0.0f;
