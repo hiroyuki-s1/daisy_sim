@@ -1,0 +1,12 @@
+# Local configuration for DaisySim
+# Copy this file to local.cmake and modify as needed
+
+# Path to your DaisyExamples directory
+# Example: set(DAISY_EXAMPLES_PATH "/home/user/DaisyExamples")
+set(DAISY_EXAMPLES_PATH "")
+
+# Enable PortAudio for real audio I/O
+# set(USE_PORTAUDIO ON)
+
+# Enable DaisySP integration (requires DAISY_EXAMPLES_PATH to be set)
+# set(USE_DAISYSP ON)

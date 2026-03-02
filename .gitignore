@@ -1,0 +1,23 @@
+# Build directories
+build/
+cmake-build-*/
+
+# Local configuration (user-specific)
+config/local.cmake
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled files
+*.o
+*.a
+*.so
+*.dylib
+
+# OS
+.DS_Store
+Thumbs.db
