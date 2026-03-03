@@ -54,22 +54,6 @@ class Tone
     float lp_          = 0.0f;
 };
 
-class ReverbSc
-{
-  public:
-    void Init(float /*sr*/) {}
-    void SetFeedback(float fb) { feedback_ = fb; }
-    void SetLpFreq(float /*f*/) {}
-    void Process(float in1, float in2, float* out1, float* out2)
-    {
-        float wet = (in1 + in2) * 0.5f * feedback_ * 0.3f;
-        *out1     = in1 + wet;
-        *out2     = in2 + wet;
-    }
-
-  private:
-    float feedback_ = 0.6f;
-};
 } // namespace daisysp
 #else
 // -----------------------------------------------------------------------
@@ -171,26 +155,150 @@ class Tone
     float lp_          = 0.0f;
 };
 
-/** Simple reverb stub */
-class ReverbSc
+} // namespace daisysp
+#endif // USE_DAISYSP
+
+// -----------------------------------------------------------------------
+// Freeverb-style reverb (platform-independent, no DaisySP required)
+// Based on Jezar at Dreampoint's Freeverb algorithm.
+// -----------------------------------------------------------------------
+namespace daisysp
+{
+
+/** Feedback comb filter with damping, used by ReverbSc */
+class CombFilter
 {
   public:
-    void Init(float /*sr*/) {}
-    void SetFeedback(float fb) { feedback_ = fb; }
-    void SetLpFreq(float /*f*/) {}
-    void Process(float in1, float in2, float* out1, float* out2)
+    static const int MAX_SIZE = 2048;
+
+    void SetSize(int n)
     {
-        float wet = (in1 + in2) * 0.5f * feedback_ * 0.3f;
-        *out1     = in1 + wet;
-        *out2     = in2 + wet;
+        size_ = (n > 0 && n < MAX_SIZE) ? n : MAX_SIZE - 1;
+        pos_  = 0;
+        std::fill(buf_, buf_ + MAX_SIZE, 0.0f);
+    }
+    void SetFeedback(float f) { feedback_ = f; }
+    void SetDamp(float d)     { damp1_ = d; damp2_ = 1.0f - d; }
+
+    float Process(float in)
+    {
+        float out    = buf_[pos_];
+        filterstore_ = out * damp2_ + filterstore_ * damp1_;
+        buf_[pos_]   = in + filterstore_ * feedback_;
+        if(++pos_ >= size_)
+            pos_ = 0;
+        return out;
     }
 
   private:
-    float feedback_ = 0.6f;
+    float buf_[MAX_SIZE] = {};
+    int   pos_           = 0;
+    int   size_          = 1116;
+    float feedback_      = 0.84f;
+    float damp1_         = 0.2f;
+    float damp2_         = 0.8f;
+    float filterstore_   = 0.0f;
+};
+
+/** All-pass filter, used by ReverbSc to diffuse the sound */
+class AllPassFilter
+{
+  public:
+    static const int MAX_SIZE = 1024;
+
+    void SetSize(int n)
+    {
+        size_ = (n > 0 && n < MAX_SIZE) ? n : MAX_SIZE - 1;
+        pos_  = 0;
+        std::fill(buf_, buf_ + MAX_SIZE, 0.0f);
+    }
+
+    float Process(float in)
+    {
+        float out  = buf_[pos_];
+        buf_[pos_] = in + out * 0.5f;
+        if(++pos_ >= size_)
+            pos_ = 0;
+        return out - in;
+    }
+
+  private:
+    float buf_[MAX_SIZE] = {};
+    int   pos_           = 0;
+    int   size_          = 556;
+};
+
+/** Freeverb-style stereo reverb
+ *  Params via SetFeedback / SetLpFreq:
+ *    feedback: 0=short decay, 1=long decay  (maps to 0.70 - 0.98)
+ *    damp:     0=bright,      1=dark        (controls comb filter LP)
+ */
+class ReverbSc
+{
+  public:
+    static const int NUM_COMBS   = 8;
+    static const int NUM_ALLPASS = 4;
+
+    void Init(float sr)
+    {
+        // Freeverb tuning lengths at 44100 Hz, scaled to target sample rate
+        static const int kCombL[NUM_COMBS]  = {1116,1188,1277,1356,1422,1491,1557,1617};
+        static const int kCombR[NUM_COMBS]  = {1139,1211,1300,1379,1445,1514,1580,1640};
+        static const int kAP[NUM_ALLPASS]   = {556, 441, 341, 225};
+        float scale = sr / 44100.0f;
+        for(int i = 0; i < NUM_COMBS; i++)
+        {
+            combs_l_[i].SetSize((int)(kCombL[i] * scale));
+            combs_r_[i].SetSize((int)(kCombR[i] * scale));
+        }
+        for(int i = 0; i < NUM_ALLPASS; i++)
+        {
+            aps_l_[i].SetSize((int)(kAP[i] * scale));
+            aps_r_[i].SetSize((int)((kAP[i] + 23) * scale));
+        }
+        UpdateParams();
+    }
+
+    void SetFeedback(float fb) { feedback_ = 0.70f + fb * 0.28f; UpdateParams(); }
+    void SetLpFreq(float damp) { damp_     = damp;               UpdateParams(); }
+
+    void Process(float in1, float in2, float* out1, float* out2)
+    {
+        float input = (in1 + in2) * 0.015f;
+        float ol = 0.0f, or_ = 0.0f;
+        for(int i = 0; i < NUM_COMBS; i++)
+        {
+            ol  += combs_l_[i].Process(input);
+            or_ += combs_r_[i].Process(input);
+        }
+        for(int i = 0; i < NUM_ALLPASS; i++)
+        {
+            ol  = aps_l_[i].Process(ol);
+            or_ = aps_r_[i].Process(or_);
+        }
+        *out1 = ol;
+        *out2 = or_;
+    }
+
+  private:
+    void UpdateParams()
+    {
+        for(int i = 0; i < NUM_COMBS; i++)
+        {
+            combs_l_[i].SetFeedback(feedback_);
+            combs_r_[i].SetFeedback(feedback_);
+            combs_l_[i].SetDamp(damp_);
+            combs_r_[i].SetDamp(damp_);
+        }
+    }
+
+    CombFilter    combs_l_[NUM_COMBS], combs_r_[NUM_COMBS];
+    AllPassFilter aps_l_[NUM_ALLPASS], aps_r_[NUM_ALLPASS];
+    float         feedback_ = 0.84f;
+    float         damp_     = 0.2f;
 };
 
 } // namespace daisysp
-#endif // USE_DAISYSP
 
 namespace DaisySim
 {
@@ -249,7 +357,9 @@ class DaisySPEffect
 
     // Other effects
     daisysp::Overdrive overdrive_;
-    daisysp::Tone      tone_;
+    daisysp::Tone      tone_;           // overdrive tone filter
+    daisysp::Tone      delay_tone_l_;   // delay feedback LP filter (L)
+    daisysp::Tone      delay_tone_r_;   // delay feedback LP filter (R)
     daisysp::ReverbSc  reverb_;
 };
 

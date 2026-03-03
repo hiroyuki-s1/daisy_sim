@@ -32,10 +32,15 @@ void DaisySPEffect::Init(float sample_rate)
     overdrive_.Init();
     tone_.Init(sample_rate_);
     reverb_.Init(sample_rate_);
+    delay_tone_l_.Init(sample_rate_);
+    delay_tone_r_.Init(sample_rate_);
 
     overdrive_.SetDrive(0.5f);
     tone_.SetFreq(8000.0f);
     reverb_.SetFeedback(0.6f);
+    // Default delay tone: bright (high cutoff)
+    delay_tone_l_.SetFreq(12000.0f);
+    delay_tone_r_.SetFreq(12000.0f);
 }
 
 void DaisySPEffect::SetType(EffectType type)
@@ -95,9 +100,13 @@ void DaisySPEffect::Process(const float* in_l,
                 float echo_l = delay_l_.Read();
                 float echo_r = delay_r_.Read();
 
-                // Write dry + feedback into delay line
-                delay_l_.Write(dry_l + echo_l * feedback);
-                delay_r_.Write(dry_r + echo_r * feedback);
+                // Apply tone filter to feedback (darkens repeats when Tone knob is low)
+                float fb_l = delay_tone_l_.Process(echo_l * feedback);
+                float fb_r = delay_tone_r_.Process(echo_r * feedback);
+
+                // Write dry + tone-filtered feedback into delay line
+                delay_l_.Write(dry_l + fb_l);
+                delay_r_.Write(dry_r + fb_r);
 
                 wet_l = echo_l;
                 wet_r = echo_r;
@@ -155,6 +164,16 @@ void DaisySPEffect::SetParameter(int index, float value)
             break;
         case EffectType::REVERB:
             if(index == 0) reverb_.SetFeedback(value);
+            if(index == 1) reverb_.SetLpFreq(value);
+            break;
+        case EffectType::DELAY:
+            if(index == 2)
+            {
+                // Tone: 0=dark (500 Hz LP), 1=bright (12 kHz LP)
+                float freq = 500.0f + value * 11500.0f;
+                delay_tone_l_.SetFreq(freq);
+                delay_tone_r_.SetFreq(freq);
+            }
             break;
         default:
             break;

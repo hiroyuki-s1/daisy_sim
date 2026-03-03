@@ -75,15 +75,29 @@ private:
     std::vector<LogEntry> console_log_;
     static const size_t MAX_LOG_ENTRIES = 100;
 
-    // Waveform buffer
+    // Waveform buffers
     static const size_t WAVEFORM_SIZE = 512;
-    float waveform_buffer_[WAVEFORM_SIZE] = {0};
+    float input_waveform_buffer_[WAVEFORM_SIZE] = {0};  // microphone input
+    float waveform_buffer_[WAVEFORM_SIZE] = {0};         // effect output
 
     // Audio settings UI state
     bool show_audio_settings_ = false;
-    int  audio_mode_sel_   = 0;  // index into AudioHostMode enum
-    int  audio_input_sel_  = 0;  // index into input_devices_ vector
-    int  audio_output_sel_ = 0;  // index into output_devices_ vector
+    int  audio_mode_sel_   = 0;     // index into AudioHostMode enum
+    int  audio_input_sel_  = 0;     // index into input_devices_ vector
+    int  audio_output_sel_ = 0;     // index into output_devices_ vector
+    bool audio_input_en_       = true;   // enable/disable input stream
+    int  audio_sr_sel_         = 1;      // 0=44100, 1=48000, 2=96000
+    int  audio_buf_sel_        = 1;      // 0=64, 1=128, 2=256, 3=512, 4=1024
+    bool audio_use_dual_input_ = false;  // ASIO + separate WASAPI mic input
+    int  audio_dual_input_sel_ = 0;      // index into non-ASIO input devices
+
+    // Test tone (440 Hz sine, added to input signal)
+    bool  test_tone_en_    = false;
+    float test_tone_phase_ = 0.0f;
+
+    // Audio levels (peak with exponential decay, 0.0-1.0)
+    float input_level_  = 0.0f;
+    float output_level_ = 0.0f;
 
     // Performance
     float cpu_usage_ = 0.0f;

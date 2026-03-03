@@ -95,13 +95,14 @@ bool App::Init() {
 
     // Wire mic -> delay effect -> output
     audio_engine_->SetCallback([this](const float* in, float* out, size_t frames) {
-        // Fixed-size stack buffers (max 256 frames, no heap alloc in RT thread)
-        float in_l[256]  = {};
-        float in_r[256]  = {};
-        float out_l[256] = {};
-        float out_r[256] = {};
+        // Stack buffers sized for ASIO preferred buffer (up to 2048 frames)
+        static const size_t MAX_FRAMES = 2048;
+        float in_l[MAX_FRAMES]  = {};
+        float in_r[MAX_FRAMES]  = {};
+        float out_l[MAX_FRAMES] = {};
+        float out_r[MAX_FRAMES] = {};
 
-        size_t n = frames < 256 ? frames : 256;
+        size_t n = frames < MAX_FRAMES ? frames : MAX_FRAMES;
 
         // Deinterleave stereo input
         for (size_t i = 0; i < n; i++) {
@@ -109,18 +110,37 @@ bool App::Init() {
             in_r[i] = in ? in[i * 2 + 1] : 0.0f;
         }
 
+        // Test tone: add 440 Hz sine to both channels
+        if (test_tone_en_) {
+            const float phase_inc = 2.0f * M_PI * 440.0f
+                                    / static_cast<float>(audio_engine_->GetSampleRate());
+            for (size_t i = 0; i < n; i++) {
+                float s = 0.3f * std::sin(test_tone_phase_);
+                in_l[i] += s;
+                in_r[i] += s;
+                test_tone_phase_ += phase_inc;
+                if (test_tone_phase_ >= 2.0f * M_PI)
+                    test_tone_phase_ -= 2.0f * M_PI;
+            }
+        }
+
         // Process through selected effect
         daisysp_effect_->Process(in_l, in_r, out_l, out_r, n);
 
-        // Reinterleave output
+        // Reinterleave output; zero any frames beyond what was processed
         for (size_t i = 0; i < n; i++) {
             out[i * 2]     = out_l[i];
             out[i * 2 + 1] = out_r[i];
         }
+        for (size_t i = n; i < frames; i++) {
+            out[i * 2]     = 0.0f;
+            out[i * 2 + 1] = 0.0f;
+        }
 
-        // Update waveform display buffer (non-critical, display thread reads this)
+        // Update waveform display buffers (non-critical, display thread reads this)
         for (size_t i = 0; i < n && i < WAVEFORM_SIZE; i++) {
-            waveform_buffer_[i] = out_l[i];
+            input_waveform_buffer_[i] = in_l[i];
+            waveform_buffer_[i]       = out_l[i];
         }
     });
 
@@ -232,8 +252,20 @@ void App::Update() {
         daisysp_effect_->SetBypass(switch_states_[0]);
     }
 
-    // Waveform buffer is filled by the audio callback with real mic data.
-    // Just update CPU usage estimate here.
+    // Compute peak levels from waveform buffers (peak-hold with exponential decay)
+    {
+        float in_peak = 0.0f, out_peak = 0.0f;
+        for (size_t i = 0; i < WAVEFORM_SIZE; i++) {
+            float iv = std::abs(input_waveform_buffer_[i]);
+            float ov = std::abs(waveform_buffer_[i]);
+            if (iv > in_peak)  in_peak  = iv;
+            if (ov > out_peak) out_peak = ov;
+        }
+        // Attack: instant, Release: ~1s at 60fps (0.95^60 ≈ 0.046)
+        input_level_  = (in_peak  > input_level_)  ? in_peak  : input_level_  * 0.95f;
+        output_level_ = (out_peak > output_level_) ? out_peak : output_level_ * 0.95f;
+    }
+
     if (audio_running_) {
         cpu_usage_ = 5.0f + (float)(rand() % 30) / 10.0f;
     } else {
@@ -329,9 +361,20 @@ void App::RenderMainWindow() {
     } else {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.36f, 0.96f, 1.0f));
         if (ImGui::Button("Start Audio", ImVec2(120, 35))) {
-            audio_running_ = true;
             audio_engine_->Start();
-            Log("Audio started", "INFO");
+            audio_running_ = audio_engine_->IsRunning();
+            if (audio_running_) {
+                const auto& err = audio_engine_->GetLastError();
+                if (!err.empty()) Log(err, "WARN");
+                char status[256];
+                snprintf(status, sizeof(status), "Audio running | %dHz | buf=%d | %.1fms",
+                         audio_engine_->GetSampleRate(),
+                         audio_engine_->GetBufferSize(),
+                         audio_engine_->GetActualLatencyMs());
+                Log(status, "INFO");
+            } else {
+                Log("Audio start FAILED: " + audio_engine_->GetLastError(), "ERROR");
+            }
         }
         ImGui::PopStyleColor();
     }
@@ -345,6 +388,21 @@ void App::RenderMainWindow() {
         Log("Recording...", "WARN");
     }
     ImGui::PopStyleColor();
+    ImGui::SameLine();
+    if (test_tone_en_) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85f, 0.55f, 0.0f, 1.0f));
+        if (ImGui::Button("Tone ON", ImVec2(85, 35))) {
+            test_tone_en_ = false;
+            Log("Test tone OFF", "INFO");
+        }
+        ImGui::PopStyleColor();
+    } else {
+        if (ImGui::Button("Test Tone", ImVec2(85, 35))) {
+            test_tone_en_    = true;
+            test_tone_phase_ = 0.0f;
+            Log("Test tone 440Hz ON - if you hear a beep, ASIO output is working", "INFO");
+        }
+    }
     ImGui::EndGroup();
 
     ImGui::Spacing();
@@ -589,48 +647,53 @@ void App::RenderEncoder() {
 }
 
 void App::RenderWaveform() {
-    ImGui::Text("Audio Monitor");
-    ImGui::SameLine(ImGui::GetColumnWidth() - 150);
-    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "IN: -12dB  OUT: -6dB");
-
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    ImVec2 pos = ImGui::GetCursorScreenPos();
-    float width = ImGui::GetColumnWidth() - 20;
-    float height = 100.0f;
+    float width   = ImGui::GetColumnWidth() - 20;
+    float wave_h  = 65.0f;
 
-    // Background
-    draw_list->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + height), IM_COL32(5, 10, 10, 255), 4.0f);
-
-    // Grid
-    for (int i = 1; i < 4; i++) {
-        float y = pos.y + height * i / 4;
-        draw_list->AddLine(ImVec2(pos.x, y), ImVec2(pos.x + width, y), IM_COL32(30, 40, 40, 255));
-    }
-
-    // Center line
-    draw_list->AddLine(
-        ImVec2(pos.x, pos.y + height/2),
-        ImVec2(pos.x + width, pos.y + height/2),
-        IM_COL32(50, 60, 60, 255)
-    );
-
-    // Waveform
-    if (audio_running_) {
-        ImU32 wave_color = IM_COL32(0, 255, 136, 255);
-        float step = width / WAVEFORM_SIZE;
-        float center_y = pos.y + height / 2;
-        float amp = height / 2 - 5;
-
-        for (size_t i = 1; i < WAVEFORM_SIZE; i++) {
-            float x1 = pos.x + (i - 1) * step;
-            float y1 = center_y - waveform_buffer_[i - 1] * amp;
-            float x2 = pos.x + i * step;
-            float y2 = center_y - waveform_buffer_[i] * amp;
-            draw_list->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), wave_color, 1.5f);
+    // Helper: draw one waveform panel at current cursor position
+    auto DrawPanel = [&](const float* buf, ImU32 wave_color, ImU32 bg_color) {
+        ImVec2 p = ImGui::GetCursorScreenPos();
+        // Background
+        draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + wave_h), bg_color, 4.0f);
+        // Grid lines
+        for (int i = 1; i < 4; i++) {
+            float y = p.y + wave_h * i / 4;
+            draw_list->AddLine(ImVec2(p.x, y), ImVec2(p.x + width, y), IM_COL32(30, 40, 40, 255));
         }
-    }
+        // Center line
+        draw_list->AddLine(ImVec2(p.x, p.y + wave_h / 2),
+                           ImVec2(p.x + width, p.y + wave_h / 2),
+                           IM_COL32(55, 65, 65, 255));
+        // Waveform
+        if (audio_running_) {
+            float step = width / WAVEFORM_SIZE;
+            float cy   = p.y + wave_h / 2;
+            float amp  = wave_h / 2 - 3;
+            for (size_t i = 1; i < WAVEFORM_SIZE; i++) {
+                float x1 = p.x + (i - 1) * step, y1 = cy - buf[i - 1] * amp;
+                float x2 = p.x +  i      * step, y2 = cy - buf[i]     * amp;
+                draw_list->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), wave_color, 1.5f);
+            }
+        }
+        ImGui::Dummy(ImVec2(width, wave_h));
+    };
 
-    ImGui::Dummy(ImVec2(width, height + 5));
+    // ---- INPUT Monitor ----
+    ImGui::TextColored(ImVec4(0.3f, 0.75f, 1.0f, 1.0f), "INPUT");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "  Microphone");
+    DrawPanel(input_waveform_buffer_, IM_COL32(0, 190, 255, 255), IM_COL32(4, 10, 18, 255));
+
+    ImGui::Spacing();
+
+    // ---- OUTPUT Monitor ----
+    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "OUTPUT");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "  Effect Out");
+    DrawPanel(waveform_buffer_, IM_COL32(0, 255, 136, 255), IM_COL32(4, 12, 8, 255));
+
+    ImGui::Spacing();
 }
 
 void App::RenderMeters() {
@@ -640,7 +703,7 @@ void App::RenderMeters() {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     const char* labels[] = {"Input", "Output"};
-    float levels[] = {0.65f, 0.80f};
+    float levels[] = {input_level_, output_level_};
 
     for (int i = 0; i < 2; i++) {
         if (i > 0) ImGui::SameLine(0, 20);
@@ -655,14 +718,14 @@ void App::RenderMeters() {
             IM_COL32(10, 10, 15, 255), 4.0f);
 
         // Gradient fill
-        float level = audio_running_ ? levels[i] : 0.0f;
-        if (level > 0) {
-            // Green zone
+        float level = levels[i];
+        if (level > 0.0001f) {
+            // Green zone (0 - 60%)
             float green_end = std::min(level, 0.6f);
             draw_list->AddRectFilled(pos, ImVec2(pos.x + meter_width * green_end, pos.y + meter_height),
                 IM_COL32(0, 200, 100, 255), 4.0f);
 
-            // Yellow zone
+            // Yellow zone (60% - 80%)
             if (level > 0.6f) {
                 float yellow_end = std::min(level, 0.8f);
                 draw_list->AddRectFilled(
@@ -672,25 +735,28 @@ void App::RenderMeters() {
                 );
             }
 
-            // Red zone
+            // Red zone (80% - 100%)
             if (level > 0.8f) {
                 draw_list->AddRectFilled(
                     ImVec2(pos.x + meter_width * 0.8f, pos.y),
-                    ImVec2(pos.x + meter_width * level, pos.y + meter_height),
+                    ImVec2(pos.x + meter_width * std::min(level, 1.0f), pos.y + meter_height),
                     IM_COL32(255, 50, 50, 255)
                 );
             }
 
-            // Peak indicator
+            // Peak indicator line
+            float peak_x = pos.x + meter_width * std::min(level, 1.0f);
             draw_list->AddRectFilled(
-                ImVec2(pos.x + meter_width * level - 2, pos.y),
-                ImVec2(pos.x + meter_width * level + 1, pos.y + meter_height),
+                ImVec2(peak_x - 2, pos.y),
+                ImVec2(peak_x + 1,  pos.y + meter_height),
                 IM_COL32(255, 255, 255, 255)
             );
         }
 
         ImGui::Dummy(ImVec2(meter_width, meter_height));
-        ImGui::TextColored(ImVec4(0.0f, 0.8f, 0.5f, 1.0f), "%s", i == 0 ? "-12 dB" : "-6 dB");
+        // Show actual dB value
+        float db = (level > 0.0001f) ? 20.0f * std::log10(level) : -60.0f;
+        ImGui::TextColored(ImVec4(0.0f, 0.8f, 0.5f, 1.0f), "%.1f dB", db);
         ImGui::EndGroup();
     }
 }
@@ -706,6 +772,7 @@ void App::RenderAudioSettings() {
 
     ImGui::Indent(10.0f);
 
+    // ---- Host Mode ----
     const char* mode_items[] = {
         "Default (WASAPI Shared)",
         "ASIO (ultra-low latency)",
@@ -713,44 +780,100 @@ void App::RenderAudioSettings() {
         "WASAPI Shared",
     };
     ImGui::Text("Host Mode:");
-    ImGui::SetNextItemWidth(220);
+    ImGui::SetNextItemWidth(240);
     ImGui::Combo("##hostmode", &audio_mode_sel_, mode_items, 4);
 
     bool is_asio = (audio_mode_sel_ == 1);
 
-    // Build device name arrays
     const auto& in_devs  = audio_engine_->GetInputDevices();
     const auto& out_devs = audio_engine_->GetOutputDevices();
 
+    ImGui::Spacing();
+
+    // ---- Input ----
+    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ Input ]");
+    ImGui::SameLine(90);
+    ImGui::Checkbox("Enable##in", &audio_input_en_);
+
     if (is_asio) {
-        // For ASIO: single device selector
+        // ASIO: single device for both I/O
         std::vector<const char*> asio_names;
-        std::vector<int>         asio_pa_indices;
+        std::vector<int>         asio_indices;
         for (const auto& d : out_devs) {
             if (d.host_api_type == 3 /*paASIO*/) {
                 asio_names.push_back(d.name.c_str());
-                asio_pa_indices.push_back(d.pa_index);
+                asio_indices.push_back(d.pa_index);
             }
         }
-
         if (asio_names.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f),
-                               "No ASIO drivers found.");
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f),
+                               "  No ASIO drivers found.");
             ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
-                               "Install an ASIO driver (ASIO4ALL, manufacturer driver).");
+                               "  Install ASIO4ALL or manufacturer driver.");
         } else {
             if (audio_input_sel_ >= (int)asio_names.size()) audio_input_sel_ = 0;
-            ImGui::Text("ASIO Device:");
-            ImGui::SetNextItemWidth(220);
+            ImGui::Text("  Device:"); ImGui::SameLine(90);
+            ImGui::SetNextItemWidth(200);
             ImGui::Combo("##asiodev", &audio_input_sel_,
                          asio_names.data(), (int)asio_names.size());
-
-            if (ImGui::Button("ASIO Control Panel")) {
+            // Show channel info
+            if (audio_input_sel_ < (int)out_devs.size()) {
+                for (const auto& d : out_devs) {
+                    if (d.host_api_type == 3) {
+                        ImGui::SameLine();
+                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                            "in:%d out:%d", d.max_input_channels, d.max_output_channels);
+                        break;
+                    }
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Control Panel"))
                 audio_engine_->ShowASIOControlPanel();
+        }
+        // Dual-stream: separate WASAPI mic while using ASIO for output
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ System Mic (WASAPI) ]");
+        ImGui::SameLine(180);
+        ImGui::Checkbox("Enable##dual", &audio_use_dual_input_);
+        if (audio_use_dual_input_) {
+            // List non-ASIO input devices
+            std::vector<const char*> wasapi_in_names;
+            for (const auto& d : in_devs) {
+                if (d.host_api_type != 3 && d.max_input_channels > 0)
+                    wasapi_in_names.push_back(d.name.c_str());
+            }
+            if (wasapi_in_names.empty()) {
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f),
+                                   "  No WASAPI input devices found.");
+            } else {
+                if (audio_dual_input_sel_ >= (int)wasapi_in_names.size())
+                    audio_dual_input_sel_ = 0;
+                ImGui::Text("  Device:"); ImGui::SameLine(90);
+                ImGui::SetNextItemWidth(200);
+                ImGui::Combo("##dualindev", &audio_dual_input_sel_,
+                             wasapi_in_names.data(), (int)wasapi_in_names.size());
+                // Show host API / channel info for selected device
+                int idx = 0;
+                for (const auto& d : in_devs) {
+                    if (d.host_api_type != 3 && d.max_input_channels > 0) {
+                        if (idx == audio_dual_input_sel_) {
+                            ImGui::SameLine();
+                            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                                "%s | ch:%d", d.host_api_name.c_str(), d.max_input_channels);
+                            break;
+                        }
+                        idx++;
+                    }
+                }
             }
         }
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ Output ]");
+        ImGui::Text("  (ASIO: same device as input)");
     } else {
-        // Separate input/output selectors
+        // Non-ASIO: separate input/output device selectors
         std::vector<const char*> in_names, out_names;
         for (const auto& d : in_devs)  in_names.push_back(d.name.c_str());
         for (const auto& d : out_devs) out_names.push_back(d.name.c_str());
@@ -758,30 +881,79 @@ void App::RenderAudioSettings() {
         if (audio_input_sel_  >= (int)in_names.size())  audio_input_sel_  = 0;
         if (audio_output_sel_ >= (int)out_names.size()) audio_output_sel_ = 0;
 
-        ImGui::Text("Input Device:");
-        ImGui::SetNextItemWidth(220);
-        if (!in_names.empty())
+        if (in_names.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "  No input devices");
+        } else {
+            ImGui::Text("  Device:"); ImGui::SameLine(90);
+            ImGui::SetNextItemWidth(200);
             ImGui::Combo("##indev", &audio_input_sel_,
                          in_names.data(), (int)in_names.size());
+            if (audio_input_sel_ < (int)in_devs.size()) {
+                const auto& d = in_devs[audio_input_sel_];
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                    "%s | ch:%d", d.host_api_name.c_str(), d.max_input_channels);
+            }
+        }
 
-        ImGui::Text("Output Device:");
-        ImGui::SetNextItemWidth(220);
-        if (!out_names.empty())
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ Output ]");
+        if (out_names.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "  No output devices");
+        } else {
+            ImGui::Text("  Device:"); ImGui::SameLine(90);
+            ImGui::SetNextItemWidth(200);
             ImGui::Combo("##outdev", &audio_output_sel_,
                          out_names.data(), (int)out_names.size());
+            if (audio_output_sel_ < (int)out_devs.size()) {
+                const auto& d = out_devs[audio_output_sel_];
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                    "%s | ch:%d", d.host_api_name.c_str(), d.max_output_channels);
+            }
+        }
     }
 
     ImGui::Spacing();
 
-    // Apply & Restart button
+    // ---- Stream Settings ----
+    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ Stream ]");
+
+    static const int   kSampleRates[] = {44100, 48000, 96000};
+    static const char* kSrLabels[]    = {"44100 Hz", "48000 Hz", "96000 Hz"};
+    static const int   kBufSizes[]    = {64, 128, 256, 512, 1024};
+    static const char* kBufLabels[]   = {"64", "128", "256", "512", "1024"};
+
+    ImGui::Text("  Sample Rate:"); ImGui::SameLine(110);
+    ImGui::SetNextItemWidth(110);
+    ImGui::Combo("##sr", &audio_sr_sel_, kSrLabels, 3);
+
+    ImGui::SameLine(240);
+    ImGui::Text("Buffer:");
+    ImGui::SameLine(285);
+    if (is_asio) {
+        ImGui::BeginDisabled();
+        ImGui::SetNextItemWidth(75);
+        ImGui::Combo("##buf", &audio_buf_sel_, kBufLabels, 5);
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(auto)");
+    } else {
+        ImGui::SetNextItemWidth(75);
+        ImGui::Combo("##buf", &audio_buf_sel_, kBufLabels, 5);
+    }
+
+    ImGui::Spacing();
+
+    // ---- Apply button ----
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
     if (ImGui::Button("Apply & Restart Audio", ImVec2(180, 0))) {
-        bool was_running = audio_running_;
-        if (was_running) {
+        if (audio_running_) {
             audio_engine_->Stop();
+            audio_running_ = false;
         }
 
-        // Apply host mode
+        // Host mode
         static const AudioHostMode mode_map[] = {
             AudioHostMode::Default,
             AudioHostMode::ASIO,
@@ -790,37 +962,71 @@ void App::RenderAudioSettings() {
         };
         audio_engine_->SetHostMode(mode_map[audio_mode_sel_]);
 
-        // Apply device selection
+        // Sample rate & buffer size
+        audio_engine_->SetSampleRate(kSampleRates[audio_sr_sel_]);
+        if (!is_asio)
+            audio_engine_->SetBufferSize(kBufSizes[audio_buf_sel_]);
+
+        // Device selection
         const auto& in_devs2  = audio_engine_->GetInputDevices();
         const auto& out_devs2 = audio_engine_->GetOutputDevices();
 
-        if (audio_mode_sel_ == 1 /*ASIO*/) {
-            // ASIO: find the selected ASIO device
+        if (is_asio) {
             int asio_idx = 0;
             for (const auto& d : out_devs2) {
                 if (d.host_api_type == 3 /*paASIO*/) {
                     if (asio_idx == audio_input_sel_) {
-                        audio_engine_->SetInputDevice(d.pa_index);
+                        audio_engine_->SetInputDevice(
+                            audio_input_en_ ? d.pa_index : AudioEngine::kInputDisabled);
                         audio_engine_->SetOutputDevice(d.pa_index);
                         break;
                     }
                     asio_idx++;
                 }
             }
+            // Dual-stream WASAPI mic
+            if (audio_use_dual_input_) {
+                int idx = 0;
+                for (const auto& d : in_devs2) {
+                    if (d.host_api_type != 3 && d.max_input_channels > 0) {
+                        if (idx == audio_dual_input_sel_) {
+                            audio_engine_->SetDualInputDevice(d.pa_index);
+                            break;
+                        }
+                        idx++;
+                    }
+                }
+            } else {
+                audio_engine_->SetDualInputDevice(-1);
+            }
         } else {
             int in_idx  = (audio_input_sel_  < (int)in_devs2.size())  ? audio_input_sel_  : 0;
             int out_idx = (audio_output_sel_ < (int)out_devs2.size()) ? audio_output_sel_ : 0;
-            audio_engine_->SetInputDevice(
-                in_devs2.empty()  ? -1 : in_devs2[in_idx].pa_index);
+
+            if (!audio_input_en_ || in_devs2.empty()) {
+                audio_engine_->SetInputDevice(AudioEngine::kInputDisabled);
+            } else {
+                audio_engine_->SetInputDevice(in_devs2[in_idx].pa_index);
+            }
             audio_engine_->SetOutputDevice(
                 out_devs2.empty() ? -1 : out_devs2[out_idx].pa_index);
         }
 
-        if (was_running) {
-            audio_engine_->Start();
-            Log("Audio restarted with new settings", "INFO");
+        audio_engine_->Start();
+        audio_running_ = audio_engine_->IsRunning();
+        if (audio_running_) {
+            const auto& err = audio_engine_->GetLastError();
+            if (!err.empty()) Log(err, "WARN");
+            static const char* kModeNames[] = {"Default", "ASIO", "WASAPI-Ex", "WASAPI-Sh"};
+            char status[256];
+            snprintf(status, sizeof(status), "Active: %s | %dHz | buf=%d | %.1fms",
+                     kModeNames[audio_mode_sel_],
+                     audio_engine_->GetSampleRate(),
+                     audio_engine_->GetBufferSize(),
+                     audio_engine_->GetActualLatencyMs());
+            Log(status, "INFO");
         } else {
-            Log("Audio settings updated (start with SPACE)", "INFO");
+            Log("Audio start FAILED: " + audio_engine_->GetLastError(), "ERROR");
         }
     }
     ImGui::PopStyleColor();

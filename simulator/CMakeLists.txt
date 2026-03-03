@@ -42,6 +42,7 @@ if(USE_PORTAUDIO)
         # Use custom PortAudio build that includes ASIO support
         set(PORTAUDIO_INCLUDE_DIRS "${CUSTOM_PORTAUDIO_PATH}/include")
         set(PORTAUDIO_LIBRARIES    "${CUSTOM_PORTAUDIO_PATH}/build_win/libportaudio.dll.a")
+        add_definitions(-DPA_USE_ASIO)
         message(STATUS "Custom PortAudio (ASIO): ${CUSTOM_PORTAUDIO_PATH}")
     else()
         pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
