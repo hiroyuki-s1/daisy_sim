@@ -11,6 +11,7 @@ set(APP_SOURCES
     src/wav_io.cpp
     src/server.cpp
     src/cab_sim.cpp
+    src/reverse_delay.cpp
 )
 
 add_executable(${PROJECT_NAME} ${APP_SOURCES})

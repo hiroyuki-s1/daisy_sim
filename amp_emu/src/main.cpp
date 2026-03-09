@@ -1,5 +1,6 @@
 #include "jcm800.h"
 #include "cab_sim.h"
+#include "reverse_delay.h"
 #include "wav_io.h"
 #include "server.h"
 
@@ -83,6 +84,11 @@ int main(int argc, char* argv[]) {
     AmpEmu::CabSim cab;
     cab.Init(48000.0f);
 
+    // Init reverse delay
+    AmpEmu::ReverseDelay delay;
+    delay.Init(48000.0f);
+    AmpEmu::ReverseDelayParams delay_params;
+
     // State
     AmpEmu::WavFile input_wav;
     bool file_loaded = false;
@@ -108,6 +114,22 @@ int main(int argc, char* argv[]) {
         else if (name == "cab") {
             cab.SetEnabled(val > 0.5f);
             printf("Cabinet sim: %s\n", cab.IsEnabled() ? "ON" : "OFF");
+        }
+        else if (name == "delay_on") {
+            delay.SetEnabled(val > 0.5f);
+            printf("Reverse Delay: %s\n", delay.IsEnabled() ? "ON" : "OFF");
+        }
+        else if (name == "delay_time") {
+            delay_params.time = val;
+            delay.SetParams(delay_params);
+        }
+        else if (name == "delay_fb") {
+            delay_params.feedback = val;
+            delay.SetParams(delay_params);
+        }
+        else if (name == "delay_mix") {
+            delay_params.mix = val;
+            delay.SetParams(delay_params);
         }
         amp.SetParams(params);
     });
@@ -153,6 +175,11 @@ int main(int argc, char* argv[]) {
 
         // Apply cabinet IR
         cab.Process(output.data(), output.data(), num_samples);
+
+        // Apply reverse delay
+        delay.Reset();
+        delay.SetParams(delay_params);
+        delay.Process(output.data(), output.data(), num_samples);
 
         // Save output WAV
         AmpEmu::SaveWav(output_path, output.data(), num_samples, 1, input_wav.sample_rate);
@@ -228,6 +255,9 @@ int main(int argc, char* argv[]) {
             amp.SetParams(params);
             amp.Process(mono.data(), out.data(), mono.size());
             cab.Process(out.data(), out.data(), out.size());
+            delay.Reset();
+            delay.SetParams(delay_params);
+            delay.Process(out.data(), out.data(), out.size());
             AmpEmu::SaveWav(output_path, out.data(), out.size(), 1, input_wav.sample_rate);
             auto t1 = std::chrono::high_resolution_clock::now();
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();

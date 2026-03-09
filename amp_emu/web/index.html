@@ -327,6 +327,25 @@ input[type="range"] { height: 20px; }
             <button class="btn" id="btn-cab" onclick="toggleCab()" style="min-width:120px; background:linear-gradient(180deg,#2a6a2a,#1a4a1a); border-color:#4a8a4a">1960A ON</button>
             <span style="font-size:11px; color:#6a5d4a" id="cab-info">Marshall 1960A + G12T-75</span>
         </div>
+        <div class="controls-row" style="flex-wrap:wrap; gap:12px">
+            <label>Delay:</label>
+            <button class="btn" id="btn-delay" onclick="toggleDelay()" style="min-width:120px; background:linear-gradient(180deg,#6a2a2a,#4a1a1a); border-color:#8a4a4a">REVERSE OFF</button>
+            <div class="knob-container" style="flex-direction:row; gap:6px; align-items:center">
+                <span style="font-size:10px; color:#8a7d6a">TIME</span>
+                <div class="knob" data-param="delay_time" data-value="0.66" style="width:44px; height:44px"></div>
+                <span class="knob-value" id="val-delay_time" style="font-size:11px">990</span>
+            </div>
+            <div class="knob-container" style="flex-direction:row; gap:6px; align-items:center">
+                <span style="font-size:10px; color:#8a7d6a">F.B</span>
+                <div class="knob" data-param="delay_fb" data-value="0.2" style="width:44px; height:44px"></div>
+                <span class="knob-value" id="val-delay_fb" style="font-size:11px">20</span>
+            </div>
+            <div class="knob-container" style="flex-direction:row; gap:6px; align-items:center">
+                <span style="font-size:10px; color:#8a7d6a">MIX</span>
+                <div class="knob" data-param="delay_mix" data-value="0.5" style="width:44px; height:44px"></div>
+                <span class="knob-value" id="val-delay_mix" style="font-size:11px">50</span>
+            </div>
+        </div>
         <div class="controls-row">
             <label>Output:</label>
             <button class="btn" id="btn-play" onclick="togglePlay()" style="min-width:70px">PLAY</button>
@@ -586,6 +605,23 @@ function toggleCab() {
     sendParam('cab', cabEnabled ? 1.0 : 0.0);
 }
 
+// ---- Reverse Delay toggle ----
+let delayEnabled = false;
+function toggleDelay() {
+    delayEnabled = !delayEnabled;
+    const btn = document.getElementById('btn-delay');
+    if (delayEnabled) {
+        btn.textContent = 'REVERSE ON';
+        btn.style.background = 'linear-gradient(180deg,#2a6a2a,#1a4a1a)';
+        btn.style.borderColor = '#4a8a4a';
+    } else {
+        btn.textContent = 'REVERSE OFF';
+        btn.style.background = 'linear-gradient(180deg,#6a2a2a,#4a1a1a)';
+        btn.style.borderColor = '#8a4a4a';
+    }
+    sendParam('delay_on', delayEnabled ? 1.0 : 0.0);
+}
+
 // ---- Params & processing ----
 let processDebounce = null;
 
@@ -621,7 +657,15 @@ function updateKnobUI(name, value) {
     const angle = -135 + value * 270;
     knob.style.transform = `rotate(${angle}deg)`;
     const valEl = document.getElementById(`val-${name}`);
-    if (valEl) valEl.textContent = (value * 10).toFixed(1);
+    if (valEl) {
+        if (name === 'delay_time') {
+            valEl.textContent = Math.round(10 + value * 1490); // 10..1500 ms
+        } else if (name === 'delay_fb' || name === 'delay_mix') {
+            valEl.textContent = Math.round(value * 100); // 0..100%
+        } else {
+            valEl.textContent = (value * 10).toFixed(1);
+        }
+    }
 }
 
 document.querySelectorAll('.knob').forEach(knob => {
