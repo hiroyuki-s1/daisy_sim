@@ -105,6 +105,7 @@ private:
     float output_gain_ = 0.1f;
     float input_gain_ = 1.0f;
     float ovs_rate_ = 96000.0f;
+
 };
 
 } // namespace DaisyFX

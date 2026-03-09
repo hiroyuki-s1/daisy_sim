@@ -33,9 +33,11 @@ static const float kGainEqQ[11] = {
 };
 
 // [2] Gain trim (dB) — controls how much signal enters the clipping cascade
+// Calibrated for line-level input (~-68dBFS noise floor)
+// Noise clipping threshold ≈ -45dB (at knob midpoint)
 static const float kGainTrimDb[11] = {
-    -83.0f, -8.0f, -2.5f, -1.5f, -1.2f, -0.8f,
-     -0.5f, -0.3f, -0.25f, -0.22f, -0.2f
+    -83.0f, -75.5f, -68.0f, -60.5f, -53.0f, -45.5f,
+    -38.0f, -30.5f, -23.0f, -15.5f, -8.0f
 };
 
 // [5] Presence EQ boost: freq (Hz), gain (dB), Q
@@ -140,7 +142,7 @@ float MS800Amp::ProcessNonlinear(float in)
     for (int g = 0; g < NUM_STAGES; g++) {
         v *= kStageGain[g];
 
-        // Symmetric hard clip (from ZOOM dis6x analysis: CLIPPER_Dynamic)
+        // Symmetric hard clip (tube saturation)
         if (v > 1.0f) v = 1.0f;
         else if (v < -1.0f) v = -1.0f;
 
@@ -224,9 +226,9 @@ void MS800Amp::Init(float sample_rate)
 // ======================================================================
 void MS800Amp::UpdateParams()
 {
-    // [6] Input gain: 0→muted, 0.5→unity, 1.0→+10dB
+    // [6] Input gain: 0→muted, 0.5→-9dB, 1.0→+3dB
     float input_val = params_[6];
-    input_gain_ = input_val * input_val * 3.16f;  // quadratic taper, max ~+10dB
+    input_gain_ = input_val * input_val * 1.41f;  // quadratic taper, max ~+3dB
 
     // [2] Gain-dependent Pre-EQ
     float gain_freq = TableLerp(kGainEqFreq, params_[0]);
