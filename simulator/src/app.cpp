@@ -15,6 +15,8 @@
 #include <cstdio>
 #include <cmath>
 #include <chrono>
+#include <fstream>
+#include <sstream>
 
 namespace DaisySim {
 
@@ -132,6 +134,9 @@ bool App::Init() {
     // Sync UI driver selection with engine's default (WASAPI)
     audio_driver_sel_ = audio_engine_->GetCurrentDriver();
 
+    // Load saved audio settings (overrides defaults if config exists)
+    LoadAudioSettings();
+
     // Wire mic -> delay effect -> output
     // Pre-compute cached gain values (updated from UI thread)
     cached_ig_lin_ = 1.0f;
@@ -246,6 +251,104 @@ void App::Shutdown() {
     SDL_Quit();
 
     Log("Shutdown complete", "INFO");
+}
+
+// ======================================================================
+// Audio settings persistence (audio_settings.cfg)
+// ======================================================================
+static const char* kSettingsFile = "audio_settings.cfg";
+
+void App::SaveAudioSettings() {
+    std::ofstream f(kSettingsFile);
+    if (!f.is_open()) return;
+
+    // Save driver/device by name so indices survive device changes
+    const auto& drivers = audio_engine_->GetDrivers();
+    const auto& inputs  = audio_engine_->GetInputDevices();
+    const auto& outputs = audio_engine_->GetOutputDevices();
+
+    std::string driver_name, input_name, output_name;
+    if (audio_driver_sel_ >= 0 && audio_driver_sel_ < (int)drivers.size())
+        driver_name = drivers[audio_driver_sel_].name;
+    if (audio_input_sel_ >= 0 && audio_input_sel_ < (int)inputs.size())
+        input_name = inputs[audio_input_sel_].name;
+    if (audio_output_sel_ >= 0 && audio_output_sel_ < (int)outputs.size())
+        output_name = outputs[audio_output_sel_].name;
+
+    f << "driver=" << driver_name << "\n";
+    f << "input=" << input_name << "\n";
+    f << "output=" << output_name << "\n";
+    f << "input_en=" << (audio_input_en_ ? 1 : 0) << "\n";
+    f << "sr_sel=" << audio_sr_sel_ << "\n";
+    f << "buf_sel=" << audio_buf_sel_ << "\n";
+    f << "input_gain=" << input_gain_ << "\n";
+    f << "output_gain=" << output_gain_ << "\n";
+
+    Log("Audio settings saved", "INFO");
+}
+
+void App::LoadAudioSettings() {
+    std::ifstream f(kSettingsFile);
+    if (!f.is_open()) return;
+
+    std::string driver_name, input_name, output_name;
+    std::string line;
+    while (std::getline(f, line)) {
+        auto eq = line.find('=');
+        if (eq == std::string::npos) continue;
+        std::string key = line.substr(0, eq);
+        std::string val = line.substr(eq + 1);
+
+        if (key == "driver")      driver_name = val;
+        else if (key == "input")  input_name = val;
+        else if (key == "output") output_name = val;
+        else if (key == "input_en")    audio_input_en_ = (val == "1");
+        else if (key == "sr_sel")      audio_sr_sel_ = std::stoi(val);
+        else if (key == "buf_sel")     audio_buf_sel_ = std::stoi(val);
+        else if (key == "input_gain")  input_gain_ = std::stof(val);
+        else if (key == "output_gain") output_gain_ = std::stof(val);
+    }
+
+    // Match driver by name
+    const auto& drivers = audio_engine_->GetDrivers();
+    for (int i = 0; i < (int)drivers.size(); i++) {
+        if (drivers[i].name == driver_name) {
+            audio_driver_sel_ = i;
+            audio_engine_->SetDriver(i);
+            break;
+        }
+    }
+
+    // Match input/output devices by name (after driver is set, devices are filtered)
+    const auto& inputs = audio_engine_->GetInputDevices();
+    for (int i = 0; i < (int)inputs.size(); i++) {
+        if (inputs[i].name == input_name) {
+            audio_input_sel_ = i;
+            break;
+        }
+    }
+    const auto& outputs = audio_engine_->GetOutputDevices();
+    for (int i = 0; i < (int)outputs.size(); i++) {
+        if (outputs[i].name == output_name) {
+            audio_output_sel_ = i;
+            break;
+        }
+    }
+
+    // Clamp indices
+    if (audio_sr_sel_ < 0 || audio_sr_sel_ > 2) audio_sr_sel_ = 1;
+    if (audio_buf_sel_ < 0 || audio_buf_sel_ > 4) audio_buf_sel_ = 0;
+
+    // Apply loaded settings to audio engine
+    static const int sr_table[] = {44100, 48000, 96000};
+    static const int buf_table[] = {64, 128, 256, 512, 1024};
+    audio_engine_->SetSampleRate(sr_table[audio_sr_sel_]);
+    audio_engine_->SetBufferSize(buf_table[audio_buf_sel_]);
+    audio_engine_->SetInputEnabled(audio_input_en_);
+    audio_engine_->SetOutputDevice(audio_output_sel_);
+    audio_engine_->SetInputDevice(audio_input_sel_);
+
+    Log("Audio settings loaded", "INFO");
 }
 
 void App::ProcessEvents() {
@@ -400,7 +503,7 @@ void App::RenderMainWindow() {
     static const char* effect_items[kNumEffects] = {
         "Overdrive", "Reverb", "Chorus", "Delay",
         "Comp", "DIST 1", "AnalogDly", "Hall",
-        "Phaser", "Tremolo", "Flanger", "MS 800"
+        "Phaser", "Tremolo", "Flanger", "MS 800", "MS 800 v1"
     };
     if (ImGui::Combo("##effect", &current_effect_type_, effect_items, kNumEffects)) {
         if (daisysp_effect_) {
@@ -557,7 +660,7 @@ void App::RenderOLED() {
     static const char* effect_names[kNumEffects] = {
         "OVERDRIVE", "REVERB", "CHORUS", "DELAY",
         "COMP", "DIST 1", "ANALOG DLY", "HALL",
-        "PHASER", "TREMOLO", "FLANGER", "MS 800"
+        "PHASER", "TREMOLO", "FLANGER", "MS 800", "MS 800 v1"
     };
     const char* title = effect_names[current_effect_type_];
     ImVec2 title_pos(pos.x + width/2 - 50, pos.y + 10);
@@ -584,6 +687,7 @@ void App::RenderOLED() {
         {"Wave:", "Depth:", "Rate:", "Mix:"},     // Tremolo
         {"Depth:", "Rate:", "RESO:", "Mix:"},     // Flanger
         {"Gain:", "Bass:", "Treble:", "VOL:"},    // MS 800
+        {"Gain:", "Bass:", "Treble:", "VOL:"},    // MS 800 v1
     };
     const char* const* current_params = param_names[current_effect_type_];
     for (int i = 0; i < 4; i++) {
@@ -635,31 +739,32 @@ void App::RenderKnobs() {
         {"Wave", "Depth", "Rate", "Mix"},     // Tremolo
         {"Depth", "Rate", "RESO", "Mix"},     // Flanger
         {"Gain", "Bass", "Treble", "VOL"},    // MS 800
+        {"Gain", "Bass", "Treble", "VOL"},    // MS 800 v1
     };
     const char* const* knob_names = knob_names_by_effect[current_effect_type_];
 
-    ImGui::BeginGroup();
+    // 2x2 grid layout with fixed cell size
+    const float knob_radius = 50.0f;
+    const float cell_w = knob_radius * 2 + 30.0f;  // knob diameter + padding
+    const float cell_h = knob_radius * 2 + 50.0f;  // knob + label + value + spacing
+    ImVec2 origin = ImGui::GetCursorPos();
+
     for (int i = 0; i < 4; i++) {
-        if (i == 2) {
-            ImGui::NewLine();
-        } else if (i > 0 && i != 2) {
-            ImGui::SameLine(0, 30);
-        }
+        int col = i % 2;
+        int row = i / 2;
+        ImGui::SetCursorPos(ImVec2(origin.x + col * cell_w, origin.y + row * cell_h));
 
-        ImGui::BeginGroup();
-
-        // Draw knob
-        bool changed = KnobWidget(knob_names[i], &knob_values_[i], 0.0f, 1.0f, 50.0f);
+        bool changed = KnobWidget(knob_names[i], &knob_values_[i], 0.0f, 1.0f, knob_radius);
 
         if (changed) {
             char msg[64];
             snprintf(msg, sizeof(msg), "%s: %.2f", knob_names[i], knob_values_[i]);
             Log(msg, "DEBUG");
         }
-
-        ImGui::EndGroup();
     }
-    ImGui::EndGroup();
+
+    // Advance cursor past the grid
+    ImGui::SetCursorPos(ImVec2(origin.x, origin.y + 2 * cell_h));
 }
 
 void App::RenderSwitches() {
@@ -1070,6 +1175,7 @@ void App::RenderAudioSettings() {
             const auto& err = audio_engine_->GetLastError();
             if (!err.empty()) Log(err, "WARN");
             Log(audio_engine_->GetStreamInfo(), "INFO");
+            SaveAudioSettings();
         } else {
             Log("FAILED: " + audio_engine_->GetLastError(), "ERROR");
         }

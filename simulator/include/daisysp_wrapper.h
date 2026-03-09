@@ -15,6 +15,7 @@
 #include <atomic>
 
 #include "ms800_amp.h"
+#include "ms800_amp_v1.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -354,6 +355,7 @@ enum class EffectType
     TREMOLO,        // 9 - LFO amplitude modulation (06_MODULATION/TREMOLO)
     FLANGER,        // 10 - Short modulated delay (06_MODULATION/VINFLNGR)
     MS800,          // 11 - Marshall JCM800 amp model (04_AMP/MS800_1U)
+    MS800_V1,       // 12 - Marshall JCM800 v1 (baseline for A/B comparison)
     NUM_EFFECTS
 };
 
@@ -400,6 +402,7 @@ class DaisySPEffect
     void ProcessTremolo(const float* in_l, const float* in_r, float* out_l, float* out_r, size_t n);
     void ProcessFlanger(const float* in_l, const float* in_r, float* out_l, float* out_r, size_t n);
     void ProcessMS800(const float* in_l, const float* in_r, float* out_l, float* out_r, size_t n);
+    void ProcessMS800V1(const float* in_l, const float* in_r, float* out_l, float* out_r, size_t n);
 
     static constexpr size_t MAX_DELAY = static_cast<size_t>(48000 * 3.1f); // 3s+ for AnalogDly
 
@@ -475,6 +478,9 @@ class DaisySPEffect
 
     // === ZOOM MS 800 (Marshall JCM800 amp model) ===
     DaisyFX::MS800Amp ms800_;
+
+    // === MS 800 v1 (baseline for A/B comparison) ===
+    DaisyFX::MS800AmpV1 ms800_v1_;
 };
 
 } // namespace DaisySim

@@ -45,6 +45,10 @@ private:
 
     void Log(const std::string& message, const std::string& level = "INFO");
 
+    // Audio settings persistence
+    void SaveAudioSettings();
+    void LoadAudioSettings();
+
     // SDL/OpenGL
     SDL_Window* window_ = nullptr;
     SDL_GLContext gl_context_ = nullptr;

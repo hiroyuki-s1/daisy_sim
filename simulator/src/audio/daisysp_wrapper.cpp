@@ -190,6 +190,8 @@ void DaisySPEffect::ApplyPendingType(EffectType type)
             dist_ds_lpf_l_.Reset(); dist_ds_lpf_r_.Reset(); break;
         case EffectType::MS800:
             ms800_.Init(sample_rate_); break;
+        case EffectType::MS800_V1:
+            ms800_v1_.Init(sample_rate_); break;
         default: break;
     }
     type_ = type;
@@ -231,6 +233,7 @@ void DaisySPEffect::Process(const float* in_l, const float* in_r,
         case EffectType::TREMOLO:      ProcessTremolo(in_l, in_r, out_l, out_r, size); break;
         case EffectType::FLANGER:      ProcessFlanger(in_l, in_r, out_l, out_r, size); break;
         case EffectType::MS800:        ProcessMS800(in_l, in_r, out_l, out_r, size); break;
+        case EffectType::MS800_V1:    ProcessMS800V1(in_l, in_r, out_l, out_r, size); break;
         default:
             for(size_t i = 0; i < size; i++)
             { out_l[i] = in_l[i]; out_r[i] = in_r[i]; }
@@ -878,6 +881,20 @@ void DaisySPEffect::ProcessMS800(const float* in_l, const float* in_r,
     ms800_.SetParameter(6, 0.5f);        // Input (fixed at noon)
 
     ms800_.Process(in_l, in_r, out_l, out_r, n);
+}
+
+void DaisySPEffect::ProcessMS800V1(const float* in_l, const float* in_r,
+                                    float* out_l, float* out_r, size_t n)
+{
+    ms800_v1_.SetParameter(0, params_[0]);  // Gain
+    ms800_v1_.SetParameter(1, params_[1]);  // Bass
+    ms800_v1_.SetParameter(2, 0.5f);        // Mid (fixed at noon)
+    ms800_v1_.SetParameter(3, params_[2]);  // Treble
+    ms800_v1_.SetParameter(4, 0.3f);        // Presence (moderate)
+    ms800_v1_.SetParameter(5, params_[3]);  // Volume (from Mix knob)
+    ms800_v1_.SetParameter(6, 0.5f);        // Input (fixed at noon)
+
+    ms800_v1_.Process(in_l, in_r, out_l, out_r, n);
 }
 
 // =========================================================================

@@ -107,9 +107,6 @@ bool KnobWidget(const char* label, float* value, float min_val, float max_val, f
     ImGui::PopID();
     ImGui::EndGroup();
 
-    // Reserve space for value text
-    ImGui::Dummy(ImVec2(radius * 2, 40));
-
     return value_changed;
 }
 

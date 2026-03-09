@@ -1,12 +1,13 @@
 /**
  * MS 800 - Marshall JCM800 2203 Amp Model (Portable)
  *
- * Based on ZOOM MS-50G+ DSP analysis (see ZOOM/effects/04_AMP/MS800_1U.md).
+ * Realistic JCM800 2203 model with cathode bypass, per-stage coupling,
+ * and Marshall FMV tone stack mid-scoop.
  *
  * Signal chain:
- *   Input → PreEQ (Hi input) → Gain-Dependent EQ → 2x Upsample →
- *   6-stage Gain Cascade + Hard Clip → Presence EQ →
- *   2x Downsample → TMB Tone Stack → Output Level
+ *   Input → PreEQ → Cathode Bypass Shelf → Gain-Dependent EQ → 4x Upsample →
+ *   6-stage Cascade (hard clip preamp + soft clip power amp) → Presence EQ →
+ *   4x Downsample → FMV Tone Stack → SubCut → Output Level
  *
  * Parameters:
  *   [0] Gain     - Preamp drive amount (0-10)
@@ -79,13 +80,18 @@ private:
     // [1] PreEQ: Hi input model (3 first-order IIRs from ZOOM coefficients)
     IIR1 pre_eq_[3];
 
+    // [1.5] Cathode bypass cap model (high shelf, pre-distortion treble boost)
+    Biquad cathode_bypass_;
+
     // [2] Gain-dependent Pre-EQ
     Biquad gain_eq_;
     float gain_trim_ = 1.0f;
 
-    // [3][6] Oversampling anti-alias filter (biquad LPF, stable)
-    Biquad ovs_up_;   // upsample anti-alias
-    Biquad ovs_dn_;   // downsample anti-alias
+    // [3][6] Oversampling anti-alias filter (cascaded biquad LPF, 4x OVS)
+    Biquad ovs_up_;    // upsample anti-alias stage 1
+    Biquad ovs_up2_;   // upsample anti-alias stage 2
+    Biquad ovs_dn_;    // downsample anti-alias stage 1
+    Biquad ovs_dn2_;   // downsample anti-alias stage 2
 
     // [4] 6-stage gain cascade with DC blocking
     static constexpr int NUM_STAGES = 6;
@@ -100,6 +106,9 @@ private:
     Biquad tone_bass_;
     Biquad tone_mid_;
     Biquad tone_treble_;
+
+    // [Post] Sub-bass cut
+    Biquad sub_cut_;
 
     // Cached computed values
     float output_gain_ = 0.1f;
