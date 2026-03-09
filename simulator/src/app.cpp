@@ -64,6 +64,44 @@ bool App::Init() {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
+    // Load Japanese-capable font (Meiryo or MS Gothic from Windows)
+    {
+        ImFontConfig cfg;
+        cfg.MergeMode = false;
+        cfg.OversampleH = 2;
+        cfg.OversampleV = 1;
+
+        // Try Meiryo first, then Yu Gothic, then MS Gothic
+        const char* font_paths[] = {
+            "C:\\Windows\\Fonts\\meiryo.ttc",
+            "C:\\Windows\\Fonts\\YuGothM.ttc",
+            "C:\\Windows\\Fonts\\msgothic.ttc",
+        };
+        bool font_loaded = false;
+        for (const char* path : font_paths) {
+            FILE* f = fopen(path, "rb");
+            if (f) {
+                fclose(f);
+                // Load base ASCII + Japanese glyphs
+                static const ImWchar ranges[] = {
+                    0x0020, 0x00FF, // ASCII + Latin
+                    0x3000, 0x30FF, // CJK Symbols, Hiragana, Katakana
+                    0x4E00, 0x9FFF, // CJK Unified Ideographs
+                    0xFF00, 0xFFEF, // Fullwidth Forms
+                    0,
+                };
+                io.Fonts->AddFontFromFileTTF(path, 15.0f, &cfg, ranges);
+                font_loaded = true;
+                printf("Loaded font: %s\n", path);
+                break;
+            }
+        }
+        if (!font_loaded) {
+            io.Fonts->AddFontDefault();
+            printf("Using default font (no Japanese support)\n");
+        }
+    }
+
     // Setup ImGui style
     SetupDaisyStyle();
 
@@ -86,38 +124,47 @@ bool App::Init() {
     daisysp_effect_->Init(48000);
     daisysp_effect_->SetType(EffectType::DELAY);
 
-    // Initialize Audio Engine with small buffer for near-zero latency
-    // 64 samples @ 48kHz = 1.33ms processing latency
+    // Initialize Audio Engine (256 samples default = safe for most drivers)
     audio_engine_ = std::make_unique<AudioEngine>();
     if (!audio_engine_->Init(48000, 64)) {
         Log("Failed to initialize audio engine", "ERROR");
     }
+    // Sync UI driver selection with engine's default (WASAPI)
+    audio_driver_sel_ = audio_engine_->GetCurrentDriver();
 
     // Wire mic -> delay effect -> output
+    // Pre-compute cached gain values (updated from UI thread)
+    cached_ig_lin_ = 1.0f;
+    cached_og_lin_ = 1.0f;
+
     audio_engine_->SetCallback([this](const float* in, float* out, size_t frames) {
-        // Stack buffers sized for ASIO preferred buffer (up to 2048 frames)
-        static const size_t MAX_FRAMES = 2048;
-        float in_l[MAX_FRAMES]  = {};
-        float in_r[MAX_FRAMES]  = {};
-        float out_l[MAX_FRAMES] = {};
-        float out_r[MAX_FRAMES] = {};
+        // Use pre-allocated buffers (no stack alloc or zero-init in callback)
+        size_t n = frames < AUDIO_BUF_SIZE ? frames : AUDIO_BUF_SIZE;
 
-        size_t n = frames < MAX_FRAMES ? frames : MAX_FRAMES;
+        float ig = cached_ig_lin_;
 
-        // Deinterleave stereo input
-        for (size_t i = 0; i < n; i++) {
-            in_l[i] = in ? in[i * 2]     : 0.0f;
-            in_r[i] = in ? in[i * 2 + 1] : 0.0f;
+        // Deinterleave stereo input → force mono + input gain
+        if (in) {
+            for (size_t i = 0; i < n; i++) {
+                float mono = (in[i * 2] + in[i * 2 + 1]) * 0.5f * ig;
+                audio_in_l_[i] = mono;
+                audio_in_r_[i] = mono;
+            }
+        } else {
+            for (size_t i = 0; i < n; i++) {
+                audio_in_l_[i] = 0.0f;
+                audio_in_r_[i] = 0.0f;
+            }
         }
 
-        // Test tone: add 440 Hz sine to both channels
+        // Test tone: add 440 Hz sine (fast approximation)
         if (test_tone_en_) {
             const float phase_inc = 2.0f * M_PI * 440.0f
                                     / static_cast<float>(audio_engine_->GetSampleRate());
             for (size_t i = 0; i < n; i++) {
                 float s = 0.3f * std::sin(test_tone_phase_);
-                in_l[i] += s;
-                in_r[i] += s;
+                audio_in_l_[i] += s;
+                audio_in_r_[i] += s;
                 test_tone_phase_ += phase_inc;
                 if (test_tone_phase_ >= 2.0f * M_PI)
                     test_tone_phase_ -= 2.0f * M_PI;
@@ -125,27 +172,38 @@ bool App::Init() {
         }
 
         // Process through selected effect
-        daisysp_effect_->Process(in_l, in_r, out_l, out_r, n);
+        daisysp_effect_->Process(audio_in_l_, audio_in_r_,
+                                 audio_out_l_, audio_out_r_, n);
 
-        // Reinterleave output; zero any frames beyond what was processed
+        // Reinterleave output — mono to both channels + output gain
+        float og = cached_og_lin_;
         for (size_t i = 0; i < n; i++) {
-            out[i * 2]     = out_l[i];
-            out[i * 2 + 1] = out_r[i];
+            float mono_out = (audio_out_l_[i] + audio_out_r_[i]) * 0.5f * og;
+            out[i * 2]     = mono_out;
+            out[i * 2 + 1] = mono_out;
         }
         for (size_t i = n; i < frames; i++) {
             out[i * 2]     = 0.0f;
             out[i * 2 + 1] = 0.0f;
         }
 
-        // Update waveform display buffers (non-critical, display thread reads this)
-        for (size_t i = 0; i < n && i < WAVEFORM_SIZE; i++) {
-            input_waveform_buffer_[i] = in_l[i];
-            waveform_buffer_[i]       = out_l[i];
+        // Update waveform display (throttled: ~60Hz, not every callback)
+        waveform_skip_++;
+        if (waveform_skip_ >= waveform_skip_interval_) {
+            waveform_skip_ = 0;
+            for (size_t i = 0; i < n && i < WAVEFORM_SIZE; i++) {
+                input_waveform_buffer_[i] = audio_in_l_[i];
+                waveform_buffer_[i]       = audio_out_l_[i];
+            }
         }
     });
 
+    // Set waveform update interval: ~60Hz based on buffer size
+    // 48000/64 = 750 callbacks/sec → skip 12 = ~62.5Hz
+    waveform_skip_interval_ = std::max(1, 48000 / (64 * 60));
+
     Log("Simulator initialized (Full Emulation Mode)", "INFO");
-    Log("Audio: 48kHz / 64 samples (~1.3ms latency) / Delay effect", "INFO");
+    Log("Audio: 48kHz / 64 samples / ASIO low-latency", "INFO");
 
     running_ = true;
     return true;
@@ -239,6 +297,14 @@ void App::Update() {
         dsp_processor_->SetBypass(switch_states_[0]);
     }
 
+    // Cache gain values for audio callback (avoid pow() in real-time)
+    {
+        float ig_db = input_gain_ * 50.0f;  // 0-1 → 0 to +50 dB
+        cached_ig_lin_ = std::pow(10.0f, ig_db / 20.0f);
+        float og_db = -60.0f + output_gain_ * 66.0f;
+        cached_og_lin_ = (output_gain_ < 0.01f) ? 0.0f : std::pow(10.0f, og_db / 20.0f);
+    }
+
     // Update DaisySP effect parameters from knobs
     if (daisysp_effect_) {
         // knob 0 = Time/Drive/Rate/Time  (param 0)
@@ -325,8 +391,12 @@ void App::RenderMainWindow() {
 
     // Effect selector
     ImGui::Text("Effect Type");
-    const char* effect_items[] = {"Overdrive", "Reverb", "Chorus", "Delay"};
-    if (ImGui::Combo("##effect", &current_effect_type_, effect_items, 4)) {
+    static const char* effect_items[kNumEffects] = {
+        "Overdrive", "Reverb", "Chorus", "Delay",
+        "Comp", "DIST 1", "AnalogDly", "Hall",
+        "Phaser", "Tremolo", "Flanger"
+    };
+    if (ImGui::Combo("##effect", &current_effect_type_, effect_items, kNumEffects)) {
         if (daisysp_effect_) {
             daisysp_effect_->SetType(static_cast<EffectType>(current_effect_type_));
             char msg[64];
@@ -334,6 +404,36 @@ void App::RenderMainWindow() {
             Log(msg, "INFO");
         }
     }
+    ImGui::Spacing();
+
+    // Input/Output gain knobs with dB display
+    ImGui::Text("I/O Gain");
+    ImGui::BeginGroup();
+    {
+        bool ig_changed = KnobWidget("INPUT", &input_gain_, 0.0f, 1.0f, 40.0f);
+        ImGui::SameLine();
+        float ig_db = input_gain_ * 50.0f;
+        ImGui::TextColored(ImVec4(0.6f, 0.8f, 0.6f, 1.0f), "+%.0fdB", ig_db);
+        if (ig_changed) {
+            char msg[64];
+            snprintf(msg, sizeof(msg), "Input Gain: +%.0f dB", ig_db);
+            Log(msg, "DEBUG");
+        }
+        ImGui::SameLine(0, 20);
+        bool og_changed = KnobWidget("OUTPUT", &output_gain_, 0.0f, 1.0f, 40.0f);
+        ImGui::SameLine();
+        float og_db = -60.0f + output_gain_ * 66.0f;
+        if (output_gain_ < 0.01f)
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "-inf");
+        else
+            ImGui::TextColored(ImVec4(0.6f, 0.8f, 0.6f, 1.0f), "%+.0fdB", og_db);
+        if (og_changed) {
+            char msg[64];
+            snprintf(msg, sizeof(msg), "Output Gain: %+.0f dB", og_db);
+            Log(msg, "DEBUG");
+        }
+    }
+    ImGui::EndGroup();
     ImGui::Spacing();
 
     RenderKnobs();
@@ -370,7 +470,7 @@ void App::RenderMainWindow() {
                 snprintf(status, sizeof(status), "Audio running | %dHz | buf=%d | %.1fms",
                          audio_engine_->GetSampleRate(),
                          audio_engine_->GetBufferSize(),
-                         audio_engine_->GetActualLatencyMs());
+                         audio_engine_->GetTotalLatencyMs());
                 Log(status, "INFO");
             } else {
                 Log("Audio start FAILED: " + audio_engine_->GetLastError(), "ERROR");
@@ -448,7 +548,11 @@ void App::RenderOLED() {
     ImU32 dim_cyan = IM_COL32(0, 128, 160, 255);
 
     // Title (dynamic based on selected effect)
-    const char* effect_names[] = {"OVERDRIVE", "REVERB", "CHORUS", "DELAY"};
+    static const char* effect_names[kNumEffects] = {
+        "OVERDRIVE", "REVERB", "CHORUS", "DELAY",
+        "COMP", "DIST 1", "ANALOG DLY", "HALL",
+        "PHASER", "TREMOLO", "FLANGER"
+    };
     const char* title = effect_names[current_effect_type_];
     ImVec2 title_pos(pos.x + width/2 - 50, pos.y + 10);
     draw_list->AddText(ImGui::GetFont(), 16 * scale / 2, title_pos, cyan, title);
@@ -461,13 +565,20 @@ void App::RenderOLED() {
     );
 
     // Parameters (dynamic based on effect type)
-    const char* param_names[4][4] = {
+    static const char* param_names[kNumEffects][4] = {
         {"Drive:", "Tone:", "Level:", "Mix:"},    // Overdrive
         {"Decay:", "Damp:", "Size:", "Mix:"},     // Reverb
-        {"Rate:", "Depth:", "Delay:", "Mix:"},    // Chorus
-        {"Time:", "Fdbk:", "Tone:", "Mix:"}       // Delay
+        {"Depth:", "Rate:", "Tone:", "Mix:"},     // Chorus
+        {"Time:", "Fdbk:", "Tone:", "Mix:"},      // Delay
+        {"Sense:", "ATTCK:", "Tone:", "VOL:"},    // Comp
+        {"Gain:", "Tone:", "VOL:", "Mix:"},       // DIST 1
+        {"Time:", "F.B:", "Damp:", "Mix:"},       // AnalogDly
+        {"PreD:", "Decay:", "Damp:", "Mix:"},     // Hall
+        {"Depth:", "Rate:", "RESO:", "Mix:"},     // Phaser
+        {"Wave:", "Depth:", "Rate:", "Mix:"},     // Tremolo
+        {"Depth:", "Rate:", "RESO:", "Mix:"},     // Flanger
     };
-    const char** current_params = param_names[current_effect_type_];
+    const char* const* current_params = param_names[current_effect_type_];
     for (int i = 0; i < 4; i++) {
         float y = pos.y + (35 + i * 15) * scale / 2;
 
@@ -504,13 +615,20 @@ void App::RenderKnobs() {
     ImGui::Text("Controls");
 
     // Dynamic knob names based on effect type
-    const char* knob_names_by_effect[4][4] = {
+    static const char* knob_names_by_effect[kNumEffects][4] = {
         {"Drive", "Tone", "Level", "Mix"},    // Overdrive
         {"Decay", "Damp", "Size", "Mix"},     // Reverb
-        {"Rate", "Depth", "Delay", "Mix"},    // Chorus
-        {"Time", "Fdbk", "Tone", "Mix"}       // Delay
+        {"Depth", "Rate", "Tone", "Mix"},     // Chorus
+        {"Time", "Fdbk", "Tone", "Mix"},      // Delay
+        {"Sense", "ATTCK", "Tone", "VOL"},    // Comp
+        {"Gain", "Tone", "VOL", "Mix"},       // DIST 1
+        {"Time", "F.B", "Damp", "Mix"},       // AnalogDly
+        {"PreD", "Decay", "Damp", "Mix"},     // Hall
+        {"Depth", "Rate", "RESO", "Mix"},     // Phaser
+        {"Wave", "Depth", "Rate", "Mix"},     // Tremolo
+        {"Depth", "Rate", "RESO", "Mix"},     // Flanger
     };
-    const char** knob_names = knob_names_by_effect[current_effect_type_];
+    const char* const* knob_names = knob_names_by_effect[current_effect_type_];
 
     ImGui::BeginGroup();
     for (int i = 0; i < 4; i++) {
@@ -772,268 +890,189 @@ void App::RenderAudioSettings() {
 
     ImGui::Indent(10.0f);
 
-    // ---- Host Mode ----
-    const char* mode_items[] = {
-        "Default (WASAPI Shared)",
-        "ASIO (ultra-low latency)",
-        "WASAPI Exclusive (low latency)",
-        "WASAPI Shared",
-    };
-    ImGui::Text("Host Mode:");
-    ImGui::SetNextItemWidth(240);
-    ImGui::Combo("##hostmode", &audio_mode_sel_, mode_items, 4);
-
-    bool is_asio = (audio_mode_sel_ == 1);
-
+    const auto& drivers  = audio_engine_->GetDrivers();
     const auto& in_devs  = audio_engine_->GetInputDevices();
     const auto& out_devs = audio_engine_->GetOutputDevices();
 
+    // ============================================================
+    // 1. AUDIO DRIVER (top-level selection, like AmpliTube)
+    // ============================================================
+    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Audio Driver");
+    {
+        std::vector<const char*> drv_names;
+        for (const auto& d : drivers) drv_names.push_back(d.name.c_str());
+
+        if (audio_driver_sel_ >= (int)drv_names.size()) audio_driver_sel_ = 0;
+
+        ImGui::SetNextItemWidth(260);
+        if (ImGui::Combo("##driver", &audio_driver_sel_,
+                         drv_names.data(), (int)drv_names.size())) {
+            // Driver changed → update engine filter, reset device selections
+            audio_engine_->SetDriver(audio_driver_sel_);
+            audio_input_sel_  = 0;
+            audio_output_sel_ = 0;
+        }
+    }
+
+    bool is_asio = audio_engine_->IsASIO();
+
+    ImGui::Spacing();
+    ImGui::Separator();
     ImGui::Spacing();
 
-    // ---- Input ----
-    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ Input ]");
-    ImGui::SameLine(90);
-    ImGui::Checkbox("Enable##in", &audio_input_en_);
-
-    if (is_asio) {
-        // ASIO: single device for both I/O
-        std::vector<const char*> asio_names;
-        std::vector<int>         asio_indices;
-        for (const auto& d : out_devs) {
-            if (d.host_api_type == 3 /*paASIO*/) {
-                asio_names.push_back(d.name.c_str());
-                asio_indices.push_back(d.pa_index);
-            }
-        }
-        if (asio_names.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f),
-                               "  No ASIO drivers found.");
-            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
-                               "  Install ASIO4ALL or manufacturer driver.");
-        } else {
-            if (audio_input_sel_ >= (int)asio_names.size()) audio_input_sel_ = 0;
-            ImGui::Text("  Device:"); ImGui::SameLine(90);
-            ImGui::SetNextItemWidth(200);
-            ImGui::Combo("##asiodev", &audio_input_sel_,
-                         asio_names.data(), (int)asio_names.size());
-            // Show channel info
-            if (audio_input_sel_ < (int)out_devs.size()) {
-                for (const auto& d : out_devs) {
-                    if (d.host_api_type == 3) {
-                        ImGui::SameLine();
-                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
-                            "in:%d out:%d", d.max_input_channels, d.max_output_channels);
-                        break;
-                    }
-                }
-            }
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Control Panel"))
-                audio_engine_->ShowASIOControlPanel();
-        }
-        // Dual-stream: separate WASAPI mic while using ASIO for output
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ System Mic (WASAPI) ]");
-        ImGui::SameLine(180);
-        ImGui::Checkbox("Enable##dual", &audio_use_dual_input_);
-        if (audio_use_dual_input_) {
-            // List non-ASIO input devices
-            std::vector<const char*> wasapi_in_names;
-            for (const auto& d : in_devs) {
-                if (d.host_api_type != 3 && d.max_input_channels > 0)
-                    wasapi_in_names.push_back(d.name.c_str());
-            }
-            if (wasapi_in_names.empty()) {
-                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f),
-                                   "  No WASAPI input devices found.");
-            } else {
-                if (audio_dual_input_sel_ >= (int)wasapi_in_names.size())
-                    audio_dual_input_sel_ = 0;
-                ImGui::Text("  Device:"); ImGui::SameLine(90);
-                ImGui::SetNextItemWidth(200);
-                ImGui::Combo("##dualindev", &audio_dual_input_sel_,
-                             wasapi_in_names.data(), (int)wasapi_in_names.size());
-                // Show host API / channel info for selected device
-                int idx = 0;
-                for (const auto& d : in_devs) {
-                    if (d.host_api_type != 3 && d.max_input_channels > 0) {
-                        if (idx == audio_dual_input_sel_) {
-                            ImGui::SameLine();
-                            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
-                                "%s | ch:%d", d.host_api_name.c_str(), d.max_input_channels);
-                            break;
-                        }
-                        idx++;
-                    }
-                }
-            }
-        }
-
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ Output ]");
-        ImGui::Text("  (ASIO: same device as input)");
+    // ============================================================
+    // 2. OUTPUT DEVICE
+    // ============================================================
+    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Output Device");
+    if (out_devs.empty()) {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "  No output devices");
     } else {
-        // Non-ASIO: separate input/output device selectors
-        std::vector<const char*> in_names, out_names;
-        for (const auto& d : in_devs)  in_names.push_back(d.name.c_str());
+        std::vector<const char*> out_names;
         for (const auto& d : out_devs) out_names.push_back(d.name.c_str());
-
-        if (audio_input_sel_  >= (int)in_names.size())  audio_input_sel_  = 0;
         if (audio_output_sel_ >= (int)out_names.size()) audio_output_sel_ = 0;
 
-        if (in_names.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "  No input devices");
-        } else {
-            ImGui::Text("  Device:"); ImGui::SameLine(90);
-            ImGui::SetNextItemWidth(200);
-            ImGui::Combo("##indev", &audio_input_sel_,
-                         in_names.data(), (int)in_names.size());
-            if (audio_input_sel_ < (int)in_devs.size()) {
-                const auto& d = in_devs[audio_input_sel_];
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
-                    "%s | ch:%d", d.host_api_name.c_str(), d.max_input_channels);
-            }
-        }
+        ImGui::SetNextItemWidth(260);
+        ImGui::Combo("##outdev", &audio_output_sel_,
+                     out_names.data(), (int)out_names.size());
 
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ Output ]");
-        if (out_names.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "  No output devices");
-        } else {
-            ImGui::Text("  Device:"); ImGui::SameLine(90);
-            ImGui::SetNextItemWidth(200);
-            ImGui::Combo("##outdev", &audio_output_sel_,
-                         out_names.data(), (int)out_names.size());
-            if (audio_output_sel_ < (int)out_devs.size()) {
-                const auto& d = out_devs[audio_output_sel_];
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
-                    "%s | ch:%d", d.host_api_name.c_str(), d.max_output_channels);
-            }
+        if (audio_output_sel_ < (int)out_devs.size()) {
+            const auto& d = out_devs[audio_output_sel_];
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                "%dch", d.max_output_channels);
         }
     }
 
     ImGui::Spacing();
 
-    // ---- Stream Settings ----
-    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ Stream ]");
+    // ============================================================
+    // 3. INPUT DEVICE
+    // ============================================================
+    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Input Device");
+    ImGui::SameLine(120);
+    ImGui::Checkbox("Enable##in", &audio_input_en_);
 
+    if (is_asio) {
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+            "  (ASIO: same device as output)");
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Control Panel"))
+            audio_engine_->ShowASIOControlPanel();
+    } else if (!audio_input_en_) {
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "  Disabled");
+    } else if (in_devs.empty()) {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "  No input devices");
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+            "  Safe mode: risky drivers are blocked, output-only will be used if needed");
+    } else {
+        std::vector<const char*> in_names;
+        for (const auto& d : in_devs) in_names.push_back(d.name.c_str());
+        if (audio_input_sel_ >= (int)in_names.size()) audio_input_sel_ = 0;
+
+        ImGui::SetNextItemWidth(260);
+        ImGui::Combo("##indev", &audio_input_sel_,
+                     in_names.data(), (int)in_names.size());
+
+        if (audio_input_sel_ < (int)in_devs.size()) {
+            const auto& d = in_devs[audio_input_sel_];
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                "%dch", d.max_input_channels);
+        }
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // ============================================================
+    // 4. SAMPLE RATE & BUFFER SIZE
+    // ============================================================
     static const int   kSampleRates[] = {44100, 48000, 96000};
     static const char* kSrLabels[]    = {"44100 Hz", "48000 Hz", "96000 Hz"};
     static const int   kBufSizes[]    = {64, 128, 256, 512, 1024};
     static const char* kBufLabels[]   = {"64", "128", "256", "512", "1024"};
 
-    ImGui::Text("  Sample Rate:"); ImGui::SameLine(110);
+    ImGui::Text("Sample Rate");
+    ImGui::SameLine(100);
     ImGui::SetNextItemWidth(110);
     ImGui::Combo("##sr", &audio_sr_sel_, kSrLabels, 3);
 
-    ImGui::SameLine(240);
-    ImGui::Text("Buffer:");
-    ImGui::SameLine(285);
+    ImGui::Text("Buffer Size");
+    ImGui::SameLine(100);
+    ImGui::SetNextItemWidth(110);
+    ImGui::Combo("##buf", &audio_buf_sel_, kBufLabels, 5);
     if (is_asio) {
-        ImGui::BeginDisabled();
-        ImGui::SetNextItemWidth(75);
-        ImGui::Combo("##buf", &audio_buf_sel_, kBufLabels, 5);
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(auto)");
-    } else {
-        ImGui::SetNextItemWidth(75);
-        ImGui::Combo("##buf", &audio_buf_sel_, kBufLabels, 5);
+        int pref = audio_engine_->GetASIOPreferredBufferSize();
+        if (pref > 0) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(ASIO pref: %d)", pref);
+        }
     }
 
     ImGui::Spacing();
 
-    // ---- Apply button ----
+    // ============================================================
+    // 5. LATENCY DISPLAY
+    // ============================================================
+    float in_lat  = audio_engine_->GetInputLatencyMs();
+    float out_lat = audio_engine_->GetOutputLatencyMs();
+    float total   = audio_engine_->GetTotalLatencyMs();
+
+    if (audio_running_ && total > 0.0f) {
+        ImGui::TextColored(ImVec4(0.0f, 0.9f, 0.5f, 1.0f),
+            "Latency: %.1f ms  (in: %.1f + out: %.1f)", total, in_lat, out_lat);
+    } else {
+        float est = kBufSizes[audio_buf_sel_] * 1000.0f / kSampleRates[audio_sr_sel_];
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+            "Est. latency: ~%.1f ms", est * 2);
+    }
+
+    ImGui::Spacing();
+
+    ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.3f, 1.0f),
+        "Safe mode: WDM-KS and ASIO4ALL are blocked to avoid BSOD-prone driver paths");
+
+    ImGui::Spacing();
+
+    // ============================================================
+    // 6. APPLY BUTTON
+    // ============================================================
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
-    if (ImGui::Button("Apply & Restart Audio", ImVec2(180, 0))) {
+    if (ImGui::Button("Apply & Restart", ImVec2(150, 28))) {
         if (audio_running_) {
             audio_engine_->Stop();
             audio_running_ = false;
         }
 
-        // Host mode
-        static const AudioHostMode mode_map[] = {
-            AudioHostMode::Default,
-            AudioHostMode::ASIO,
-            AudioHostMode::WASAPI_Exclusive,
-            AudioHostMode::WASAPI_Shared,
-        };
-        audio_engine_->SetHostMode(mode_map[audio_mode_sel_]);
-
-        // Sample rate & buffer size
+        // Apply settings to engine
+        audio_engine_->SetDriver(audio_driver_sel_);
         audio_engine_->SetSampleRate(kSampleRates[audio_sr_sel_]);
-        if (!is_asio)
-            audio_engine_->SetBufferSize(kBufSizes[audio_buf_sel_]);
+        audio_engine_->SetInputEnabled(audio_input_en_);
 
-        // Device selection
-        const auto& in_devs2  = audio_engine_->GetInputDevices();
-        const auto& out_devs2 = audio_engine_->GetOutputDevices();
+        audio_engine_->SetBufferSize(kBufSizes[audio_buf_sel_]);
 
-        if (is_asio) {
-            int asio_idx = 0;
-            for (const auto& d : out_devs2) {
-                if (d.host_api_type == 3 /*paASIO*/) {
-                    if (asio_idx == audio_input_sel_) {
-                        audio_engine_->SetInputDevice(
-                            audio_input_en_ ? d.pa_index : AudioEngine::kInputDisabled);
-                        audio_engine_->SetOutputDevice(d.pa_index);
-                        break;
-                    }
-                    asio_idx++;
-                }
-            }
-            // Dual-stream WASAPI mic
-            if (audio_use_dual_input_) {
-                int idx = 0;
-                for (const auto& d : in_devs2) {
-                    if (d.host_api_type != 3 && d.max_input_channels > 0) {
-                        if (idx == audio_dual_input_sel_) {
-                            audio_engine_->SetDualInputDevice(d.pa_index);
-                            break;
-                        }
-                        idx++;
-                    }
-                }
-            } else {
-                audio_engine_->SetDualInputDevice(-1);
-            }
-        } else {
-            int in_idx  = (audio_input_sel_  < (int)in_devs2.size())  ? audio_input_sel_  : 0;
-            int out_idx = (audio_output_sel_ < (int)out_devs2.size()) ? audio_output_sel_ : 0;
-
-            if (!audio_input_en_ || in_devs2.empty()) {
-                audio_engine_->SetInputDevice(AudioEngine::kInputDisabled);
-            } else {
-                audio_engine_->SetInputDevice(in_devs2[in_idx].pa_index);
-            }
-            audio_engine_->SetOutputDevice(
-                out_devs2.empty() ? -1 : out_devs2[out_idx].pa_index);
-        }
+        audio_engine_->SetOutputDevice(audio_output_sel_);
+        audio_engine_->SetInputDevice(audio_input_sel_);
 
         audio_engine_->Start();
         audio_running_ = audio_engine_->IsRunning();
+
         if (audio_running_) {
             const auto& err = audio_engine_->GetLastError();
             if (!err.empty()) Log(err, "WARN");
-            static const char* kModeNames[] = {"Default", "ASIO", "WASAPI-Ex", "WASAPI-Sh"};
-            char status[256];
-            snprintf(status, sizeof(status), "Active: %s | %dHz | buf=%d | %.1fms",
-                     kModeNames[audio_mode_sel_],
-                     audio_engine_->GetSampleRate(),
-                     audio_engine_->GetBufferSize(),
-                     audio_engine_->GetActualLatencyMs());
-            Log(status, "INFO");
+            Log(audio_engine_->GetStreamInfo(), "INFO");
         } else {
-            Log("Audio start FAILED: " + audio_engine_->GetLastError(), "ERROR");
+            Log("FAILED: " + audio_engine_->GetLastError(), "ERROR");
         }
     }
     ImGui::PopStyleColor();
 
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.0f, 0.8f, 0.5f, 1.0f),
-                       "Latency: %.2f ms", audio_engine_->GetActualLatencyMs());
+    // Stream status
+    if (audio_running_) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Active");
+    }
 
     ImGui::Unindent(10.0f);
     ImGui::Spacing();
@@ -1080,7 +1119,7 @@ void App::RenderStatusBar() {
     ImGui::SameLine();
     ImGui::Text("| Buffer: %d", audio_engine_->GetBufferSize());
     ImGui::SameLine();
-    float latency = audio_engine_->GetActualLatencyMs();
+    float latency = audio_engine_->GetTotalLatencyMs();
     if (latency > 0.0f)
         ImGui::Text("| Latency: %.1fms", latency);
     else
