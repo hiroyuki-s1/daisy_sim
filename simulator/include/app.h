@@ -105,7 +105,7 @@ private:
     // Input/Output gain (0.0-1.0 knob → mapped to dB range)
     // INPUT:  0-1 → 0dB to +50dB (x1 to x316)
     // OUTPUT: 0-1 → -inf to +6dB
-    float input_gain_  = 0.40f;   // ~+20dB default
+    float input_gain_  = 0.20f;   // ~+10dB default
     float output_gain_ = 0.70f;   // ~0dB default
 
     // Test tone (440 Hz sine, added to input signal)

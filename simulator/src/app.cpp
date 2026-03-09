@@ -175,10 +175,13 @@ bool App::Init() {
         daisysp_effect_->Process(audio_in_l_, audio_in_r_,
                                  audio_out_l_, audio_out_r_, n);
 
-        // Reinterleave output — mono to both channels + output gain
+        // Reinterleave output — mono to both channels + output gain + soft clip
         float og = cached_og_lin_;
         for (size_t i = 0; i < n; i++) {
             float mono_out = (audio_out_l_[i] + audio_out_r_[i]) * 0.5f * og;
+            // Soft clip (tanh) to prevent harsh digital clipping
+            if (mono_out > 0.9f || mono_out < -0.9f)
+                mono_out = std::tanh(mono_out);
             out[i * 2]     = mono_out;
             out[i * 2 + 1] = mono_out;
         }
