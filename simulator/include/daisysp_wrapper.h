@@ -12,6 +12,9 @@
 #include <cstring>
 #include <algorithm>
 #include <cmath>
+#include <atomic>
+
+#include "ms800_amp.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -350,6 +353,7 @@ enum class EffectType
     PHASER,         // 8 - Multi-stage allpass phaser (06_MODULATION/PHASER)
     TREMOLO,        // 9 - LFO amplitude modulation (06_MODULATION/TREMOLO)
     FLANGER,        // 10 - Short modulated delay (06_MODULATION/VINFLNGR)
+    MS800,          // 11 - Marshall JCM800 amp model (04_AMP/MS800_1U)
     NUM_EFFECTS
 };
 
@@ -382,6 +386,7 @@ class DaisySPEffect
     float GetMix() const { return mix_; }
 
   private:
+    void ApplyPendingType(EffectType type);  // runs on audio thread only
     // Per-effect process functions
     void ProcessOverdrive(const float* in_l, const float* in_r, float* out_l, float* out_r, size_t n);
     void ProcessReverb(const float* in_l, const float* in_r, float* out_l, float* out_r, size_t n);
@@ -394,11 +399,13 @@ class DaisySPEffect
     void ProcessPhaser(const float* in_l, const float* in_r, float* out_l, float* out_r, size_t n);
     void ProcessTremolo(const float* in_l, const float* in_r, float* out_l, float* out_r, size_t n);
     void ProcessFlanger(const float* in_l, const float* in_r, float* out_l, float* out_r, size_t n);
+    void ProcessMS800(const float* in_l, const float* in_r, float* out_l, float* out_r, size_t n);
 
     static constexpr size_t MAX_DELAY = static_cast<size_t>(48000 * 3.1f); // 3s+ for AnalogDly
 
     float      sample_rate_ = 48000.0f;
     EffectType type_        = EffectType::DELAY;
+    std::atomic<int> pending_type_{-1};  // deferred type switch (audio thread does init)
     bool       bypass_      = false;
     float      mix_         = 0.8f;
     float      params_[8]   = {0.3f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f};
@@ -465,6 +472,9 @@ class DaisySPEffect
     daisysp::DelayLine<float, 2400> flanger_dl_l_, flanger_dl_r_; // ~50ms
     float flanger_lfo_phase_ = 0.0f;
     float flanger_fb_l_ = 0.0f, flanger_fb_r_ = 0.0f;
+
+    // === ZOOM MS 800 (Marshall JCM800 amp model) ===
+    DaisyFX::MS800Amp ms800_;
 };
 
 } // namespace DaisySim

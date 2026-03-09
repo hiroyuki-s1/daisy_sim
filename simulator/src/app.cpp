@@ -179,8 +179,11 @@ bool App::Init() {
         float og = cached_og_lin_;
         for (size_t i = 0; i < n; i++) {
             float mono_out = (audio_out_l_[i] + audio_out_r_[i]) * 0.5f * og;
+            // NaN/Inf protection — must check before any comparison
+            if (std::isnan(mono_out) || std::isinf(mono_out))
+                mono_out = 0.0f;
             // Soft clip (tanh) to prevent harsh digital clipping
-            if (mono_out > 0.9f || mono_out < -0.9f)
+            else if (mono_out > 0.9f || mono_out < -0.9f)
                 mono_out = std::tanh(mono_out);
             out[i * 2]     = mono_out;
             out[i * 2 + 1] = mono_out;
@@ -397,7 +400,7 @@ void App::RenderMainWindow() {
     static const char* effect_items[kNumEffects] = {
         "Overdrive", "Reverb", "Chorus", "Delay",
         "Comp", "DIST 1", "AnalogDly", "Hall",
-        "Phaser", "Tremolo", "Flanger"
+        "Phaser", "Tremolo", "Flanger", "MS 800"
     };
     if (ImGui::Combo("##effect", &current_effect_type_, effect_items, kNumEffects)) {
         if (daisysp_effect_) {
@@ -554,7 +557,7 @@ void App::RenderOLED() {
     static const char* effect_names[kNumEffects] = {
         "OVERDRIVE", "REVERB", "CHORUS", "DELAY",
         "COMP", "DIST 1", "ANALOG DLY", "HALL",
-        "PHASER", "TREMOLO", "FLANGER"
+        "PHASER", "TREMOLO", "FLANGER", "MS 800"
     };
     const char* title = effect_names[current_effect_type_];
     ImVec2 title_pos(pos.x + width/2 - 50, pos.y + 10);
@@ -580,6 +583,7 @@ void App::RenderOLED() {
         {"Depth:", "Rate:", "RESO:", "Mix:"},     // Phaser
         {"Wave:", "Depth:", "Rate:", "Mix:"},     // Tremolo
         {"Depth:", "Rate:", "RESO:", "Mix:"},     // Flanger
+        {"Gain:", "Bass:", "Treble:", "VOL:"},    // MS 800
     };
     const char* const* current_params = param_names[current_effect_type_];
     for (int i = 0; i < 4; i++) {
@@ -630,6 +634,7 @@ void App::RenderKnobs() {
         {"Depth", "Rate", "RESO", "Mix"},     // Phaser
         {"Wave", "Depth", "Rate", "Mix"},     // Tremolo
         {"Depth", "Rate", "RESO", "Mix"},     // Flanger
+        {"Gain", "Bass", "Treble", "VOL"},    // MS 800
     };
     const char* const* knob_names = knob_names_by_effect[current_effect_type_];
 

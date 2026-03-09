@@ -145,13 +145,21 @@ void DaisySPEffect::Init(float sample_rate)
     flanger_dl_r_.Init();
     flanger_lfo_phase_ = 0.0f;
     flanger_fb_l_ = flanger_fb_r_ = 0.0f;
+
+    // --- ZOOM MS 800 (JCM800) ---
+    ms800_.Init(sample_rate_);
 }
 
 void DaisySPEffect::SetType(EffectType type)
 {
-    type_ = type;
-    // Reset state for new effect
-    switch(type_)
+    // Defer to audio thread — avoids race between Init() and Process()
+    pending_type_.store(static_cast<int>(type), std::memory_order_release);
+}
+
+// Called on audio thread only (from Process), so no race with effect processing
+void DaisySPEffect::ApplyPendingType(EffectType type)
+{
+    switch(type)
     {
         case EffectType::DELAY:
             delay_l_.Reset(); delay_r_.Reset(); break;
@@ -180,13 +188,28 @@ void DaisySPEffect::SetType(EffectType type)
             dist_tone_l_.Reset(); dist_tone_r_.Reset();
             dist_us_lpf_l_.Reset(); dist_us_lpf_r_.Reset();
             dist_ds_lpf_l_.Reset(); dist_ds_lpf_r_.Reset(); break;
+        case EffectType::MS800:
+            ms800_.Init(sample_rate_); break;
         default: break;
     }
+    type_ = type;
 }
 
 void DaisySPEffect::Process(const float* in_l, const float* in_r,
                             float* out_l, float* out_r, size_t size)
 {
+    // Apply deferred type switch on audio thread (no race with Process)
+    int pending = pending_type_.load(std::memory_order_acquire);
+    if(pending >= 0)
+    {
+        ApplyPendingType(static_cast<EffectType>(pending));
+        pending_type_.store(-1, std::memory_order_release);
+        // Output silence for this block (init may have reset filters)
+        for(size_t i = 0; i < size; i++)
+        { out_l[i] = 0.0f; out_r[i] = 0.0f; }
+        return;
+    }
+
     if(bypass_)
     {
         for(size_t i = 0; i < size; i++)
@@ -207,6 +230,7 @@ void DaisySPEffect::Process(const float* in_l, const float* in_r,
         case EffectType::PHASER:       ProcessPhaser(in_l, in_r, out_l, out_r, size); break;
         case EffectType::TREMOLO:      ProcessTremolo(in_l, in_r, out_l, out_r, size); break;
         case EffectType::FLANGER:      ProcessFlanger(in_l, in_r, out_l, out_r, size); break;
+        case EffectType::MS800:        ProcessMS800(in_l, in_r, out_l, out_r, size); break;
         default:
             for(size_t i = 0; i < size; i++)
             { out_l[i] = in_l[i]; out_r[i] = in_r[i]; }
@@ -832,6 +856,28 @@ void DaisySPEffect::ProcessFlanger(const float* in_l, const float* in_r,
         out_l[i] = in_l[i] * (1.0f - mix_) + wet_l * mix_;
         out_r[i] = in_r[i] * (1.0f - mix_) + wet_r * mix_;
     }
+}
+
+// =========================================================================
+// ZOOM MS 800: Marshall JCM800 2203 amp model
+// Delegates to portable DaisyFX::MS800Amp implementation.
+// Knob mapping: 0=Gain, 1=Bass, 2=Treble, 3=Volume
+// Full 7-param access via SetParameter.
+// =========================================================================
+void DaisySPEffect::ProcessMS800(const float* in_l, const float* in_r,
+                                 float* out_l, float* out_r, size_t n)
+{
+    // Map 4-knob UI to 7 MS800 params
+    // Knob 0 → Gain, Knob 1 → Bass, Knob 2 → Treble, Knob 3 → Volume
+    ms800_.SetParameter(0, params_[0]);  // Gain
+    ms800_.SetParameter(1, params_[1]);  // Bass
+    ms800_.SetParameter(2, 0.5f);        // Mid (fixed at noon)
+    ms800_.SetParameter(3, params_[2]);  // Treble
+    ms800_.SetParameter(4, 0.3f);        // Presence (moderate)
+    ms800_.SetParameter(5, params_[3]);  // Volume (from Mix knob)
+    ms800_.SetParameter(6, 0.5f);        // Input (fixed at noon)
+
+    ms800_.Process(in_l, in_r, out_l, out_r, n);
 }
 
 // =========================================================================

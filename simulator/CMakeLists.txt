@@ -66,6 +66,13 @@ set(IMGUI_SOURCES
 )
 
 # ==============================================================================
+# Shared Portable Effects (from shared/effects/)
+# ==============================================================================
+set(SHARED_EFFECTS_SOURCES
+    ${CMAKE_SOURCE_DIR}/../shared/effects/amp/ms800_amp.cpp
+)
+
+# ==============================================================================
 # Application Sources
 # ==============================================================================
 set(APP_SOURCES
@@ -86,6 +93,7 @@ set(APP_SOURCES
 add_executable(${PROJECT_NAME}
     ${IMGUI_SOURCES}
     ${APP_SOURCES}
+    ${SHARED_EFFECTS_SOURCES}
 )
 
 # ==============================================================================
@@ -94,6 +102,8 @@ add_executable(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/../shared/effects
+    ${CMAKE_SOURCE_DIR}/../shared/effects/amp
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     ${SDL2_INCLUDE_DIRS}

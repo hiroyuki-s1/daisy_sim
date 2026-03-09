@@ -121,6 +121,8 @@ set(SHARED_EFFECTS_SOURCES
     shared/effects/drive/overdrive_effect.cpp
     # modulation/
     shared/effects/modulation/chorus_effect.cpp
+    # amp/
+    shared/effects/amp/ms800_amp.cpp
     # dynamics/ (future)
     # reverb/ (future)
 )
@@ -156,6 +158,7 @@ if(DAISY_TARGET STREQUAL "SITL")
         ${CMAKE_SOURCE_DIR}/shared/effects/delay
         ${CMAKE_SOURCE_DIR}/shared/effects/drive
         ${CMAKE_SOURCE_DIR}/shared/effects/modulation
+        ${CMAKE_SOURCE_DIR}/shared/effects/amp
         ${CMAKE_SOURCE_DIR}/shared/effects/dynamics
         ${CMAKE_SOURCE_DIR}/shared/effects/reverb
         ${CMAKE_SOURCE_DIR}/shared/platform
@@ -181,8 +184,11 @@ if(DAISY_TARGET STREQUAL "SITL")
     if(USE_PORTAUDIO)
         target_link_libraries(DaisySim PRIVATE ${PORTAUDIO_LIBRARIES})
     endif()
+    if(WIN32)
+        target_link_libraries(DaisySim PRIVATE dbghelp)
+    endif()
 
-    target_compile_options(DaisySim PRIVATE -Wall -Wextra -O2)
+    target_compile_options(DaisySim PRIVATE -Wall -Wextra -O2 -g)
 
     # Copy required DLLs to build directory (Windows)
     if(WIN32)
@@ -241,6 +247,7 @@ elseif(DAISY_TARGET STREQUAL "HATL")
         ${CMAKE_SOURCE_DIR}/shared/effects/delay
         ${CMAKE_SOURCE_DIR}/shared/effects/drive
         ${CMAKE_SOURCE_DIR}/shared/effects/modulation
+        ${CMAKE_SOURCE_DIR}/shared/effects/amp
         ${CMAKE_SOURCE_DIR}/shared/effects/dynamics
         ${CMAKE_SOURCE_DIR}/shared/effects/reverb
         ${CMAKE_SOURCE_DIR}/shared/platform
