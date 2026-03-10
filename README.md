@@ -125,46 +125,42 @@ daisy_sim/
 
 | 環境 | 必要なもの |
 |------|-----------|
-| **Windows** | MSYS2 UCRT64 (gcc, cmake, ninja, SDL2, PortAudio) |
-| **Linux/WSL** | cmake, g++, libsdl2-dev, portaudio19-dev |
-| **PEDAL_MODE** | ARM GCC (`arm-none-eabi-gcc`) + libDaisy + DaisySP |
+| **Windows (PC側)** | MSYS2 UCRT64 (gcc, cmake, ninja, SDL2, PortAudio) |
+| **BENCH/PEDAL firmware** | DaisyToolchain (`C:/Program Files/DaisyToolchain/`) |
+| **タスクランナー** | [just](https://github.com/casey/just) — `winget install Casey.Just` |
 
-### SIM_MODE（PCシミュレータ）
-
-```bash
-# Windows (MSYS2 UCRT64 or Git Bash)
-PATH="/c/msys64/ucrt64/bin:$PATH"
-cmake -B build/sim -DDAISY_MODE=SIM_MODE -G Ninja
-ninja -C build/sim
-./build/sim/DaisySim.exe
-```
-
-### BENCH_MODE（USBベンチテスト）
+### just を使ったビルド（推奨）
 
 ```bash
-# PC側ホスト
-PATH="/c/msys64/ucrt64/bin:$PATH"
-cmake -B build/bench -DDAISY_MODE=BENCH_MODE -G Ninja
-ninja -C build/bench
+# just のインストール (PowerShell/cmd で)
+winget install Casey.Just
 
-# Daisy側ファームウェア (ARM toolchain必要)
-cd src/bench/firmware && make && make program-dfu
+# ビルド
+just build-sim       # DaisySim.exe (PCシミュレータ)
+just build-bench     # DaisyBench.exe (ベンチモードPC側)
+just build-firmware  # bench firmware (.bin)
+
+# インクリメンタルビルド (ソース変更のみ、速い)
+just bench           # ninja のみ (cmake スキップ)
+
+# フラッシュ & 実行
+just flash           # DFU書き込み (DFUモードにしてから)
+just deploy          # build-firmware + flash
+just run COM5        # DaisyBench.exe 起動 (COM番号はデバイスマネージャーで確認)
+just sim             # DaisySim.exe 起動
 ```
 
-### PEDAL_MODE（実機ファームウェア）
+### BENCH_MODE 接続手順
 
-```bash
-# libDaisy Makefileシステム使用
-cd src/pedal/Delay
-make
-make program-dfu    # DFUモードでDaisyに書き込み
-```
+1. Daisy Pod を USB でPCに接続
+2. デバイスマネージャー → ポート(COMとLPT) → **STM32 Virtual COM Port (COMx)** を確認
+3. `just run COMx` で起動（例: `just run COM5`）
 
 ### テスト
 
 ```bash
 cd tests
-PATH="/c/msys64/ucrt64/bin:$PATH"
+export PATH="/c/msys64/ucrt64/bin:/c/msys64/usr/bin:$PATH"
 cmake -B build -G Ninja && ninja -C build
 ./build/test_ms800.exe      # MS800安定性テスト (8項目)
 ./build/test_ui_arrays.exe  # UI配列整合性テスト (6項目)
@@ -466,91 +462,73 @@ pacman -S mingw-w64-ucrt-x86_64-{gcc,cmake,ninja,SDL2,portaudio,pkgconf}
 pacman -S make  # PEDAL/BENCH firmware ビルドに必要
 ```
 
-**重要**: Git Bash や VS Code ターミナルでは以下の PATH 設定が必要:
+**重要**: Git Bash や VS Code ターミナルでは以下の PATH 設定が必要（Justfile が自動設定）:
 ```bash
 export PATH="/c/msys64/ucrt64/bin:/c/msys64/usr/bin:$PATH"
 ```
 
-### 2. ARM ツールチェーン (PEDAL_MODE / BENCH firmware)
+### 2. DaisyToolchain (PEDAL_MODE / BENCH firmware)
 
-Daisy Seed ファームウェアのビルドに必要。SIM_MODE のみ使う場合は不要。
+[Daisy Toolchain](https://github.com/electro-smith/DaisyToolchain/releases) をダウンロード・インストール。
+デフォルトで `C:/Program Files/DaisyToolchain/` にインストールされる。
 
-1. [Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) から `arm-none-eabi` (12.2以上) をダウンロード・インストール
-2. PATH に追加:
-   ```bash
-   export PATH="/c/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/12.2 mpacbti-rel1/bin:$PATH"
-   ```
-3. 確認:
-   ```bash
-   arm-none-eabi-gcc --version  # arm-none-eabi-gcc 12.2.1 以上
-   ```
+### 3. just タスクランナー
 
-### 3. DaisyExamples + libDaisy + DaisySP
-
-```bash
-# DaisyExamples リポジトリ
-git clone https://github.com/electro-smith/DaisyExamples ~/ws/DaisyExamples
-cd ~/ws/DaisyExamples
-
-# libDaisy と DaisySP のサブモジュール初期化
-git submodule update --init libDaisy DaisySP
-
-# libDaisy ビルド (ARM ファームウェアのリンクに必要)
-cd libDaisy && make
-cd ..
-
-# DaisySP ビルド (ARM ファームウェアのリンクに必要)
-cd DaisySP && make
+PowerShell/cmd で:
+```
+winget install Casey.Just
 ```
 
-### 4. ローカル設定
+Git Bash でインストールできない場合:
+```bash
+curl -sSL https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-pc-windows-msvc.zip -o /tmp/just.zip
+unzip /tmp/just.zip just.exe -d "$HOME/bin/"
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+```
+
+### 4. サブモジュール初期化 (libDaisy / DaisySP)
+
+```bash
+git submodule update --init --recursive
+# libDaisy には STM32 HAL など深いサブモジュールがある
+cd DaisyExamples/libDaisy && git submodule update --init --recursive
+```
+
+ARM firmwareのリンクに必要なライブラリをビルド:
+```bash
+export PATH="/c/Program Files/DaisyToolchain/bin:/c/msys64/usr/bin:$PATH"
+cd DaisyExamples/libDaisy && make -j4
+cd ../DaisySP && make -j4
+```
+
+### 5. ローカル設定
 
 `cmake/local.cmake` を作成 (`.gitignore`対象):
 ```cmake
-set(DAISY_EXAMPLES_PATH "C:/Users/<ユーザー名>/ws/DaisyExamples" CACHE PATH "" FORCE)
+set(DAISY_EXAMPLES_PATH "${CMAKE_SOURCE_DIR}/DaisyExamples" CACHE PATH "" FORCE)
 set(USE_DAISYSP ON CACHE BOOL "" FORCE)
-# ASIO対応PortAudio (省略可 — 超低レイテンシが必要な場合)
-if(WIN32)
-    set(CUSTOM_PORTAUDIO_PATH "C:/Users/<ユーザー名>/ws/portaudio" CACHE PATH "" FORCE)
-endif()
 ```
 
-### 5. 全モードビルド確認
+### 6. 全モードビルド確認
 
 ```bash
-export PATH="/c/msys64/ucrt64/bin:/c/msys64/usr/bin:$PATH"
-export PATH="/c/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/12.2 mpacbti-rel1/bin:$PATH"
-
-# SIM_MODE (PCシミュレータ)
-cmake -B build_root -DDAISY_TARGET=SITL -G Ninja
-ninja -C build_root
-./build_root/DaisySim.exe
-
-# テスト
-cd tests && cmake -B build -G Ninja && ninja -C build
-./build/test_ms800.exe && ./build/test_ui_arrays.exe
-cd ..
-
-# PEDAL_MODE ファームウェア (Delay)
-cd src/pedal/Delay && make
-# make program-dfu  # DFUモードでDaisyに書き込み
-cd ../../..
-
-# BENCH firmware (全12エフェクト)
-cd src/bench/firmware && make
-# make program-dfu  # DFUモードでDaisyに書き込み
-cd ../../..
+just build-sim       # DaisySim.exe
+just build-bench     # DaisyBench.exe
+just build-firmware  # bench_firmware.bin
+just deploy          # ファームウェア書き込み
+just run COM5        # 実行 (COM番号はデバイスマネージャーで確認)
 ```
 
 ### トラブルシューティング
 
 | 症状 | 原因 | 対処 |
 |------|------|------|
-| `mkdir -p: コマンドの構文が誤っています` | Windows版makeがMSYS2のmakeでない | `pacman -S make` で MSYS2版をインストール、`/c/msys64/usr/bin` を PATH に |
+| BENCH:ALIVE が表示されない | COM番号が違う | デバイスマネージャーで "STM32 Virtual COM Port" を確認 |
+| USB CDC 通信なし | `usb_handle.Init()` 未呼出 | bench firmware main.cpp で `hw.seed.usb_handle.Init(FS_INTERNAL)` を確認 |
+| Daisy 起動時ハードフォルト | SDRAM BSS グローバルのコンストラクタ | DSY_SDRAM_BSS オブジェクトのインライン初期化子を削除 |
 | `-ldaisy: No such file` | libDaisy 未ビルド | `cd DaisyExamples/libDaisy && make` |
 | `-ldaisysp: No such file` | DaisySP 未ビルド | `cd DaisyExamples/DaisySP && make` |
 | SRAM overflow (>512KB) | DelayLine がクラス内に直接配置 | `SetDelayLines()` で SDRAM バッファを注入 |
-| `fonepole` / `DelayLine` 再定義 | `daisysp.h` と `dsp_blocks.h` の同時include | ファームウェアでは `daisysp.h` を直接includeしない |
 
 ---
 
