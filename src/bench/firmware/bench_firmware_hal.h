@@ -48,7 +48,15 @@ public:
     }
 
     void UpdateOutputs() override {
+        // LED2: blink with health signal (EXE=1s interval, timeout=400ms → visible ON/OFF)
+        uint32_t now = daisy::System::GetNow();
+        bool healthy = (last_health_ms_ != 0) && (now - last_health_ms_ < 400);
+        hw_.led2.Set(0.0f, healthy ? 1.0f : 0.0f, 0.0f);
         hw_.UpdateLeds();
+    }
+
+    void SetHealthReceived() {
+        last_health_ms_ = daisy::System::GetNow();
     }
 
     // --- Audio info ---
@@ -199,6 +207,9 @@ private:
 
     // OLED buffer (for serial)
     uint8_t oled_buffer_[OLED_WIDTH * OLED_HEIGHT / 8] = {};
+
+    // Health heartbeat timestamp
+    uint32_t last_health_ms_ = 0;
 };
 
 } // namespace DaisyFX

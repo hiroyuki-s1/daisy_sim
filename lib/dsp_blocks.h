@@ -69,9 +69,9 @@ public:
     }
 private:
     T      line_[max_size];
-    size_t write_ptr_ = 0;
-    size_t delay_ = 1;
-    float  frac_ = 0.0f;
+    size_t write_ptr_;  // initialized by Reset()
+    size_t delay_;      // initialized by Reset()
+    float  frac_;       // initialized by Reset()
 };
 
 } // namespace daisysp

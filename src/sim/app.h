@@ -19,6 +19,10 @@
 #include "daisysp_wrapper.h"
 #include "pedal_app.h"
 
+#ifdef DAISY_BENCH_MODE
+#include "bench_host.h"
+#endif
+
 namespace DaisySim {
 
 class App {
@@ -29,6 +33,10 @@ public:
     bool Init();
     void Run();
     void Shutdown();
+
+#ifdef DAISY_BENCH_MODE
+    void SetBenchPort(const std::string& port) { bench_port_ = port; }
+#endif
 
 private:
     void ProcessEvents();
@@ -127,6 +135,11 @@ private:
     // Performance
     float cpu_usage_ = 0.0f;
     float frame_time_ = 0.0f;
+
+#ifdef DAISY_BENCH_MODE
+    std::unique_ptr<DaisyFX::BenchHost> bench_host_;
+    std::string bench_port_;
+#endif
 };
 
 } // namespace DaisySim

@@ -61,18 +61,30 @@ static LONG WINAPI CrashHandler(EXCEPTION_POINTERS* ep) {
 #endif
 
 int main(int argc, char* argv[]) {
-    (void)argc;
-    (void)argv;
-
 #ifdef _WIN32
     SetUnhandledExceptionFilter(CrashHandler);
 #endif
 
     printf("Daisy Simulator v0.1.0\n");
     printf("======================\n");
+#ifdef DAISY_BENCH_MODE
+    printf("Mode: Bench (Daisy Pod via USB serial)\n\n");
+#else
     printf("Mode: Full Emulation\n\n");
+#endif
 
     DaisySim::App app;
+
+#ifdef DAISY_BENCH_MODE
+    if (argc > 1) {
+        app.SetBenchPort(argv[1]);
+    } else {
+        printf("Usage: DaisyBench.exe <COM port>  (e.g. COM3)\n");
+    }
+    (void)argc; (void)argv;
+#else
+    (void)argc; (void)argv;
+#endif
 
     if (!app.Init()) {
         printf("Failed to initialize application\n");

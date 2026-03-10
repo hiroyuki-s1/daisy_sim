@@ -109,6 +109,7 @@ bool BenchHost::Connect(const std::string& port_name, int baud_rate)
 #endif
 
     connected_ = true;
+    last_health_ms_ = 0; // force immediate health send on first SendControls()
 
     // Start reader thread
     reader_running_ = true;
@@ -172,6 +173,13 @@ bool BenchHost::SendPacket(uint8_t type, const void* payload, uint16_t len)
 
 void BenchHost::SendControls()
 {
+    // Send health heartbeat every 1s (Daisy timeout=400ms → 1s ON/OFF blink)
+    uint32_t now_ms = GetTimeMs();
+    if (now_ms - last_health_ms_ >= 1000) {
+        SendPacket((uint8_t)Bench::PacketType::SYS_HEALTH, nullptr, 0);
+        last_health_ms_ = now_ms;
+    }
+
     Bench::CtrlAllPayload ctrl;
     for (int i = 0; i < 4; i++)
         ctrl.knobs[i] = (uint16_t)(knob_values_[i] * 4095.0f);
@@ -242,6 +250,22 @@ void BenchHost::ReaderThread()
             continue;
         }
 
+        // Check for raw text (non-protocol bytes) - log directly
+        // If buffer doesn't start with SYNC bytes, treat as raw ASCII
+        if (bytes_read > 0 && buf[0] != Bench::SYNC0) {
+            buf[bytes_read] = '\0';
+            std::string raw(reinterpret_cast<const char*>(buf));
+            // Strip trailing CR/LF
+            while (!raw.empty() && (raw.back() == '\r' || raw.back() == '\n'))
+                raw.pop_back();
+            if (!raw.empty()) {
+                std::lock_guard<std::mutex> lk(log_mutex_);
+                log_queue_.push_back("[RAW] " + raw);
+                if (log_queue_.size() > 64) log_queue_.pop_front();
+            }
+            continue;
+        }
+
         // Parse received packets
         // Simple state machine: scan for SYNC0+SYNC1, then parse header
         for (int i = 0; i < bytes_read - 5; i++) {
@@ -293,6 +317,16 @@ void BenchHost::ReaderThread()
                             recv_led_values_[j] = s->leds[j] / 255.0f;
                         input_level_  = s->input_level / 4095.0f;
                         output_level_ = s->output_level / 4095.0f;
+                    }
+                    break;
+
+                case Bench::ResponseType::SYS_LOG:
+                    if (len > 0) {
+                        std::string msg(reinterpret_cast<const char*>(payload),
+                                        payload[len-1] == 0 ? len-1 : len);
+                        std::lock_guard<std::mutex> lk(log_mutex_);
+                        log_queue_.push_back(msg);
+                        if (log_queue_.size() > 64) log_queue_.pop_front();
                     }
                     break;
 

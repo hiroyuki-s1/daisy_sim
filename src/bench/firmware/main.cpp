@@ -48,6 +48,25 @@ static float audio_out_level = 0.0f;
 static uint8_t rx_buf[2048];
 static int     rx_len = 0;
 
+// Forward declaration
+static void SendResponse(uint8_t type, const void* payload, uint16_t len);
+
+// Send a debug log string to PC
+static void SendLog(const char* msg)
+{
+    SendResponse((uint8_t)ResponseType::SYS_LOG, msg, (uint16_t)(strlen(msg) + 1));
+}
+
+// USB CDC receive callback (called from USB interrupt)
+static void UsbReceiveCallback(uint8_t* buf, uint32_t* len)
+{
+    uint32_t n = *len;
+    if (rx_len + (int)n <= (int)sizeof(rx_buf)) {
+        memcpy(rx_buf + rx_len, buf, n);
+        rx_len += (int)n;
+    }
+}
+
 // =========================================================================
 // Audio Callback
 // =========================================================================
@@ -95,27 +114,21 @@ void AudioCallback(AudioHandle::InterleavingInputBuffer  in,
 
 static void SendResponse(uint8_t type, const void* payload, uint16_t len)
 {
-    uint8_t header[5];
-    header[0] = SYNC0;
-    header[1] = SYNC1;
-    header[2] = type;
-    header[3] = (uint8_t)(len & 0xFF);
-    header[4] = (uint8_t)(len >> 8);
+    // Assemble full packet into one buffer to avoid fragmented USB transfers
+    static uint8_t tx_buf[6 + Bench::MAX_PAYLOAD]; // header(5) + payload + crc(1)
+    tx_buf[0] = SYNC0;
+    tx_buf[1] = SYNC1;
+    tx_buf[2] = type;
+    tx_buf[3] = (uint8_t)(len & 0xFF);
+    tx_buf[4] = (uint8_t)(len >> 8);
+    if (len > 0 && payload)
+        memcpy(&tx_buf[5], payload, len);
 
     // CRC over type + len + payload
-    uint8_t crc_data[3 + Bench::MAX_PAYLOAD];
-    crc_data[0] = type;
-    crc_data[1] = header[3];
-    crc_data[2] = header[4];
-    if (len > 0 && payload)
-        memcpy(&crc_data[3], payload, len);
-    uint8_t crc = crc8(crc_data, 3 + len);
+    uint8_t crc = crc8(&tx_buf[2], 3 + len);
+    tx_buf[5 + len] = crc;
 
-    // Send via USB CDC
-    hw.seed.usb_handle.TransmitInternal(header, 5);
-    if (len > 0 && payload)
-        hw.seed.usb_handle.TransmitInternal((uint8_t*)payload, len);
-    hw.seed.usb_handle.TransmitInternal(&crc, 1);
+    hw.seed.usb_handle.TransmitInternal(tx_buf, 6 + len);
 }
 
 static void ProcessPacket(uint8_t type, const uint8_t* payload, uint16_t len)
@@ -158,6 +171,10 @@ static void ProcessPacket(uint8_t type, const uint8_t* payload, uint16_t len)
         case PacketType::CMD_RESET:
             pedal_app.Init(bench_hal, hw.AudioSampleRate());
             bench_hal->SetUseVirtual(false);
+            break;
+
+        case PacketType::SYS_HEALTH:
+            bench_hal->SetHealthReceived();
             break;
 
         case PacketType::SYS_PING:
@@ -236,6 +253,18 @@ int main(void)
     hw.Init();
     hw.SetAudioBlockSize(4);
 
+    // Register USB CDC receive callback
+    // USB CDC must be explicitly initialized (DaisySeed::Init() leaves it commented out)
+    hw.seed.usb_handle.Init(UsbHandle::FS_INTERNAL);
+    hw.seed.usb_handle.SetReceiveCallback(UsbReceiveCallback, UsbHandle::FS_INTERNAL);
+    System::Delay(500); // wait for USB enumeration on PC
+
+    // [1] hw.Init() OK → LED1 blue
+    hw.led1.Set(0.0f, 0.0f, 1.0f);
+    hw.UpdateLeds();
+    hw.DelayMs(200);
+    SendLog("[1] hw.Init OK, USB CB set");
+
     // Create HAL
     static BenchFirmwareHAL hal_instance(hw);
     bench_hal = &hal_instance;
@@ -244,15 +273,44 @@ int main(void)
     pedal_app.GetDelayEffect()->SetDelayLines(&sdram_delay_l, &sdram_delay_r);
     pedal_app.GetAnalogDelayEffect()->SetDelayLines(&sdram_analog_l, &sdram_analog_r);
 
+    // [2] SDRAM pointers set → LED1 white
+    hw.led1.Set(1.0f, 1.0f, 1.0f);
+    hw.UpdateLeds();
+    SendLog("[2] SDRAM pointers set");
+
     // Initialize PedalApp (all 12 effects)
     pedal_app.Init(bench_hal, hw.AudioSampleRate());
 
+    // [3] PedalApp init OK → LED1 green
+    hw.led1.Set(0.0f, 1.0f, 0.0f);
+    hw.UpdateLeds();
+    SendLog("[3] PedalApp init OK");
+
     hw.StartAdc();
     hw.StartAudio(AudioCallback);
+    SendLog("[4] Audio started - ready");
 
+    uint32_t log_timer = 0;
+    uint32_t raw_timer = 0;
     while (1) {
         ProcessSerialData();
         SendStatusUpdate();
+
+        uint32_t now = System::GetNow();
+
+        // Raw text ping every 1s (bypasses protocol - visible in any serial monitor)
+        if (now - raw_timer > 1000) {
+            raw_timer = now;
+            const char* ping = "BENCH:ALIVE\r\n";
+            hw.seed.usb_handle.TransmitInternal((uint8_t*)ping, 13);
+        }
+
+        // Protocol-based alive log every 5s
+        if (now - log_timer > 5000) {
+            log_timer = now;
+            SendLog("[alive]");
+        }
+
         hw.DelayMs(1);
     }
 }

@@ -47,6 +47,7 @@ enum class PacketType : uint8_t {
     // System
     SYS_PING        = 0x30,  // Ping (expects PONG)
     SYS_VERSION     = 0x31,  // Request version info
+    SYS_HEALTH      = 0x32,  // Heartbeat (Daisy lights LED1 green while receiving)
 };
 
 /**

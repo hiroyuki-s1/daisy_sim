@@ -42,5 +42,5 @@ Thumbs.db
 imgui.ini
 audio_settings.cfg
 
-# DaisyExamples (submodule or local copy)
-DaisyExamples/
+# DaisyExamples: libDaisy and DaisySP are managed as git submodules
+# (DaisyExamples/ itself is not tracked, only the submodule dirs)

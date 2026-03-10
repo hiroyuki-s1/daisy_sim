@@ -16,6 +16,7 @@
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <deque>
 
 namespace DaisyFX {
 
@@ -143,6 +144,21 @@ private:
     uint8_t oled_buffer_[1024] = {0};
 
     std::string last_error_;
+    uint32_t last_health_ms_ = 0;
+
+    // Log messages received from Daisy
+    std::deque<std::string> log_queue_;
+    std::mutex log_mutex_;
+
+public:
+    // Pop next log message from Daisy (returns false if none)
+    bool GetNextLog(std::string& out) {
+        std::lock_guard<std::mutex> lk(log_mutex_);
+        if (log_queue_.empty()) return false;
+        out = log_queue_.front();
+        log_queue_.pop_front();
+        return true;
+    }
 };
 
 } // namespace DaisyFX

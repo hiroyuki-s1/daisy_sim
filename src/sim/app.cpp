@@ -221,6 +221,25 @@ bool App::Init() {
     Log("Simulator initialized (Full Emulation Mode)", "INFO");
     Log("Audio: 48kHz / 64 samples / ASIO low-latency", "INFO");
 
+#ifdef DAISY_BENCH_MODE
+    bench_host_ = std::make_unique<DaisyFX::BenchHost>();
+    if (!bench_port_.empty()) {
+        Log("Connecting to Daisy on " + bench_port_ + " ...", "INFO");
+        if (bench_host_->Connect(bench_port_)) {
+            printf("[BENCH] Connected to Daisy on %s\n", bench_port_.c_str());
+            fflush(stdout);
+            Log("Connected to Daisy: " + bench_port_, "INFO");
+        } else {
+            printf("[BENCH] Failed: %s\n", bench_host_->GetLastError().c_str());
+            fflush(stdout);
+            Log("Failed to connect: " + bench_host_->GetLastError(), "ERROR");
+        }
+    } else {
+        printf("[BENCH] No port specified. Usage: DaisyBench.exe COM3\n");
+        Log("No serial port specified. Usage: DaisyBench.exe COM3", "WARN");
+    }
+#endif
+
     running_ = true;
     return true;
 }
@@ -432,6 +451,28 @@ void App::Update() {
         // Sync current_effect_type_ for GUI display
         current_effect_type_ = pedal_app_->GetCurrentEffectIndex();
     }
+
+#ifdef DAISY_BENCH_MODE
+    // Send controls to Daisy Pod via USB serial
+    if (bench_host_ && bench_host_->IsConnected()) {
+        for (int i = 0; i < 4; i++)
+            bench_host_->SetKnobValue(i, knob_values_[i]);
+        bench_host_->SetSwitchState(0, switch_states_[0]);
+        bench_host_->SetSwitchState(1, switch_states_[1]);
+        bench_host_->SetEncoderPosition(encoder_position_);
+        bench_host_->SendEffectSelect(current_effect_type_);
+        bench_host_->SendControls();
+        bench_host_->ProcessReceived();
+
+        // Display log messages from Daisy in console + stdout
+        std::string daisy_log;
+        while (bench_host_->GetNextLog(daisy_log)) {
+            printf("[DAISY] %s\n", daisy_log.c_str());
+            fflush(stdout);
+            Log("[DAISY] " + daisy_log, "INFO");
+        }
+    }
+#endif
 
     // Keep DaisySP effect in sync (will be removed when PedalApp fully replaces it)
     if (daisysp_effect_) {
