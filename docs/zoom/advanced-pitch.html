@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上級 Pitch | ZOOM DSP コース</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+:root { --bg:#f3efe7; --paper:#fffdfa; --ink:#1a2230; --muted:#5c6576; --line:#d4cdc0; --accent:#9a3412; --a2:#0f766e; --a3:#1d4ed8; --shadow:0 16px 40px rgba(26,34,48,.08); }
+body { font-family:"Yu Gothic UI","Meiryo",sans-serif; background:linear-gradient(180deg,#f3efe7,#ebe3d4); color:var(--ink); line-height:1.85; }
+.wrap { width:min(1160px,calc(100% - 32px)); margin:0 auto; }
+.hero,.card,.footer { background:rgba(255,253,250,.95); border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow); }
+.hero { margin:28px auto 20px; padding:28px; }
+.eyebrow { display:inline-block; padding:8px 14px; border-radius:999px; background:#fbe5db; color:var(--accent); font-weight:700; font-size:.88rem; }
+h1 { margin-top:14px; font-size:clamp(2rem,4vw,3.5rem); line-height:1.05; }
+.lead { margin-top:16px; color:var(--muted); }
+.nav { display:flex; gap:12px; flex-wrap:wrap; margin-top:18px; }
+.nav a { text-decoration:none; color:var(--ink); border:1px solid var(--line); padding:10px 16px; border-radius:999px; background:#fff; font-weight:700; }
+section { padding:16px 0; }
+.kicker { color:var(--accent); text-transform:uppercase; letter-spacing:.08em; font-size:.86rem; font-weight:700; }
+.section-title { margin-top:8px; font-size:clamp(1.45rem,3vw,2.3rem); line-height:1.14; }
+.intro { margin-top:10px; color:var(--muted); max-width:78ch; }
+.grid-2,.grid-3 { display:grid; gap:18px; }
+.grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.card { padding:22px; }
+.card h3 { margin-bottom:10px; font-size:1.1rem; }
+.eq { margin-top:12px; padding:14px 16px; background:#171d28; color:#eef4ff; border-radius:16px; font-family:Consolas,Monaco,monospace; overflow-x:auto; }
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; min-width:720px; }
+th,td { padding:12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--a3); font-size:.86rem; text-transform:uppercase; }
+.note { margin-top:14px; padding:14px 16px; background:rgba(15,118,110,.08); border-left:4px solid var(--a2); border-radius:0 16px 16px 0; }
+.footer { margin:28px auto 42px; padding:22px; }
+.footer ol { margin-left:20px; margin-top:10px; }
+@media (max-width:960px) { .grid-2,.grid-3 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <div class="wrap hero">
+    <span class="eyebrow">上級分冊 Pitch</span>
+    <h1>Pitch 系は「高さを変える」よりも、「時間をどう切って、どうつなぐか」の問題です。</h1>
+    <p class="lead">Pitch shift は難しい effect です。単純に再生速度を変えると長さも変わるので、実際には buffer、window、crossfade、補間、場合によっては解析ベースの手法を組み合わせて高さだけを変えます。</p>
+    <div class="nav">
+      <a href="advanced-zoom-dsp.html">上級ハブへ戻る</a>
+      <a href="advanced-reverb.html">Reverb 編</a>
+      <a href="dsp-lab.html">体験ラボ</a>
+    </div>
+  </div>
+
+  <section class="wrap">
+    <div class="kicker">Why Pitch Is Hard</div>
+    <h2 class="section-title">時間軸をそのまま伸び縮みすると、pitch も time も一緒に変わってしまいます。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>再生速度変更</h3>
+        <div class="eq">read speed up -> pitch up + duration shorter</div>
+        <p style="margin-top:10px;">これは tape の発想で直感的ですが、単独の pitch shifter としては不十分です。</p>
+      </div>
+      <div class="card">
+        <h3>欲しいもの</h3>
+        <div class="eq">pitch changes
+time length mostly preserved</div>
+        <p style="margin-top:10px;">この要求を満たすために、granular, delay-based, phase vocoder 的発想などが使われます。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Delay Based Methods</div>
+    <h2 class="section-title">pedal では、可変 delay と crossfade を使う実装が現実的なことがあります。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>考え方</h3>
+        <p>読み出し位置を少しずつ速くしたり遅くしたりすると pitch が変わります。ただし周期的に破綻するので、複数 read head や crossfade で継ぎ目を隠します。</p>
+      </div>
+      <div class="card">
+        <h3>なぜ重いか</h3>
+        <p>補間、windowing、crossfade、場合によっては mono/stereo 処理や tracking が必要で、通常の delay よりコストが上がります。</p>
+        <div class="note">Pitch 系の DSP% が高めでも不思議ではありません。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Tracking</div>
+    <h2 class="section-title">musical な pitch effect では、音高推定やアタック検出の質も結果に効きます。</h2>
+    <div class="grid-3" style="margin-top:18px;">
+      <div class="card"><h3>tracking</h3><p>入力の周期や音高を安定して取れないと、揺れや誤検出が目立ちます。</p></div>
+      <div class="card"><h3>latency</h3><p>解析窓が長いほど安定しやすいが、遅延は増えやすいです。</p></div>
+      <div class="card"><h3>polyphonic complexity</h3><p>和音対応は単音より難しく、計算負荷も上がりやすいです。</p></div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Reading ZOOM Pitch Effects</div>
+    <h2 class="section-title">MonoPitch や PitchSHFT を読むときは、delay 的構造か tracking 的構造かをまず見ます。</h2>
+    <div class="table-wrap card" style="margin-top:18px;">
+      <table>
+        <thead><tr><th>兆候</th><th>示唆</th><th>読み方</th></tr></thead>
+        <tbody>
+          <tr><td>buffer / rate / interpolation</td><td>delay-based pitch shifting</td><td>read head と補間を探す</td></tr>
+          <tr><td>window / fade / overlap</td><td>granular / overlap-add 系</td><td>継ぎ目処理を疑う</td></tr>
+          <tr><td>tracking / mono / detect</td><td>音高解析依存</td><td>detector の存在を探す</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="wrap footer">
+    <h2>次に読むページ</h2>
+    <ol>
+      <li><a href="advanced-reverb.html">advanced-reverb.html</a> に戻って、同じ時間系でも何が違うか比較する</li>
+      <li><a href="fundamentals-timefx.html">fundamentals-timefx.html</a> で delay / modulation の基礎を確認する</li>
+      <li><a href="index.html">index.html</a> の Pitch 系 effect を実際に見て推測を当てる</li>
+    </ol>
+  </div>
+</body>
+</html>

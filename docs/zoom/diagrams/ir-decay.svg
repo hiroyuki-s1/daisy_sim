@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 550 220" font-family="'Segoe UI', Arial, sans-serif" font-size="13">
+  <defs>
+    <marker id="ix" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10" fill="#666"/></marker>
+    <marker id="iy" viewBox="0 0 10 10" refX="5" refY="0" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,10 L5,0 L10,10" fill="#666"/></marker>
+  </defs>
+
+  <rect width="550" height="220" rx="12" fill="#1a1a2e"/>
+  <text x="275" y="22" text-anchor="middle" fill="#ccc" font-weight="bold" font-size="14">IR (インパルス応答) の時間波形</text>
+
+  <g transform="translate(50,35)">
+    <!-- axes -->
+    <line x1="40" y1="155" x2="440" y2="155" stroke="#666" marker-end="url(#ix)"/>
+    <line x1="40" y1="155" x2="40" y2="20" stroke="#666" marker-end="url(#iy)"/>
+    <text x="20" y="25" fill="#888" font-size="11">音量</text>
+    <text x="440" y="175" fill="#888" font-size="11" text-anchor="end">時間 (ms)</text>
+
+    <!-- X labels -->
+    <text x="45" y="172" fill="#666" font-size="9">0</text>
+    <text x="75" y="172" fill="#666" font-size="9">5</text>
+    <text x="110" y="172" fill="#666" font-size="9">10</text>
+    <text x="160" y="172" fill="#666" font-size="9">20</text>
+    <text x="260" y="172" fill="#666" font-size="9">50</text>
+    <text x="400" y="172" fill="#666" font-size="9">100</text>
+
+    <!-- Decay bands - stacked from bottom -->
+    <!-- Low mode (longest) -->
+    <path d="M45,155 L48,100 Q55,105 70,115 Q100,125 150,135 Q220,145 350,152 Q400,154 430,155" fill="none" stroke="#2ecc71" stroke-width="2" opacity="0.6"/>
+    <path d="M45,155 L48,100 Q55,105 70,115 Q100,125 150,135 Q220,145 350,152 Q400,154 430,155 Z" fill="#2ecc71" opacity="0.08"/>
+
+    <!-- Mid mode -->
+    <path d="M45,155 L48,70 Q55,80 65,100 Q80,115 110,130 Q150,142 200,150 Q250,153 300,155" fill="none" stroke="#4a9eff" stroke-width="2" opacity="0.6"/>
+    <path d="M45,155 L48,70 Q55,80 65,100 Q80,115 110,130 Q150,142 200,150 Q250,153 300,155 Z" fill="#4a9eff" opacity="0.08"/>
+
+    <!-- High mode (fastest decay) -->
+    <path d="M45,155 L47,35 Q50,50 55,80 Q60,105 70,125 Q85,140 110,148 Q140,153 170,155" fill="none" stroke="#e94560" stroke-width="2" opacity="0.6"/>
+    <path d="M45,155 L47,35 Q50,50 55,80 Q60,105 70,125 Q85,140 110,148 Q140,153 170,155 Z" fill="#e94560" opacity="0.08"/>
+
+    <!-- Overall envelope -->
+    <path d="M45,155 L47,30 Q50,40 55,65 Q65,90 80,110 Q100,125 130,135 Q180,143 250,148 Q350,153 430,155" fill="none" stroke="#ff9e64" stroke-width="2.5"/>
+
+    <!-- Annotations -->
+    <text x="55" y="28" fill="#e94560" font-size="10">← アタック</text>
+    <path d="M85,48 L120,40" stroke="#e94560" stroke-width="0.8"/>
+    <text x="125" y="42" fill="#e94560" font-size="9">高域モードがすぐ減衰</text>
+    <path d="M130,100 L170,85" stroke="#4a9eff" stroke-width="0.8"/>
+    <text x="175" y="88" fill="#4a9eff" font-size="9">中域モードが続く</text>
+    <path d="M230,138 L270,120" stroke="#2ecc71" stroke-width="0.8"/>
+    <text x="275" y="122" fill="#2ecc71" font-size="9">低域モードが長く残る</text>
+  </g>
+</svg>

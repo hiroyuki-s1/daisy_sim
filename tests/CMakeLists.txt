@@ -7,16 +7,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # ==============================================================================
 # Include paths
 # ==============================================================================
-set(SHARED_DIR ${CMAKE_SOURCE_DIR}/../shared/effects)
-set(SIM_DIR ${CMAKE_SOURCE_DIR}/../simulator)
+set(LIB_DIR ${CMAKE_SOURCE_DIR}/../lib)
+set(SITL_DIR ${CMAKE_SOURCE_DIR}/../src/sitl)
 
 include_directories(
-    ${SHARED_DIR}
-    ${SHARED_DIR}/amp
-    ${SHARED_DIR}/delay
-    ${SHARED_DIR}/drive
-    ${SHARED_DIR}/modulation
-    ${SIM_DIR}/include
+    ${LIB_DIR}
+    ${LIB_DIR}/amp
+    ${LIB_DIR}/delay
+    ${LIB_DIR}/drive
+    ${LIB_DIR}/modulation
+    ${SITL_DIR}
 )
 
 # DaisySP headers (optional)
@@ -26,8 +26,8 @@ if(DEFINED ENV{DAISY_EXAMPLES_PATH})
         include_directories(${DAISYSP_DIR})
         add_definitions(-DUSE_DAISYSP)
     endif()
-elseif(EXISTS "${CMAKE_SOURCE_DIR}/../config/local.cmake")
-    include("${CMAKE_SOURCE_DIR}/../config/local.cmake")
+elseif(EXISTS "${CMAKE_SOURCE_DIR}/../cmake/local.cmake")
+    include("${CMAKE_SOURCE_DIR}/../cmake/local.cmake")
     if(DAISY_EXAMPLES_PATH)
         set(DAISYSP_DIR ${DAISY_EXAMPLES_PATH}/DaisySP/Source)
         if(EXISTS ${DAISYSP_DIR})
@@ -42,7 +42,7 @@ endif()
 # ==============================================================================
 add_executable(test_ms800
     test_ms800.cpp
-    ${SHARED_DIR}/amp/ms800_amp.cpp
+    ${LIB_DIR}/amp/ms800_amp.cpp
 )
 target_compile_options(test_ms800 PRIVATE -Wall -Wextra -O2)
 

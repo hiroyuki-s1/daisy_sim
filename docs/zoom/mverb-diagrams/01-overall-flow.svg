@@ -1,0 +1,118 @@
+<svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg" font-family="monospace" font-size="12">
+  <rect width="900" height="520" fill="#1a1a2e" rx="8"/>
+  <text x="450" y="30" text-anchor="middle" fill="#e0e0e0" font-size="16" font-weight="bold">MVerb 全体シグナルフロー</text>
+
+  <!-- Input -->
+  <rect x="20" y="60" width="70" height="50" rx="6" fill="#2d4a7a" stroke="#5b8dd9" stroke-width="1.5"/>
+  <text x="55" y="82" text-anchor="middle" fill="#fff" font-size="11">Input L</text>
+  <text x="55" y="96" text-anchor="middle" fill="#aaa" font-size="9">left</text>
+  <rect x="20" y="130" width="70" height="50" rx="6" fill="#2d4a7a" stroke="#5b8dd9" stroke-width="1.5"/>
+  <text x="55" y="152" text-anchor="middle" fill="#fff" font-size="11">Input R</text>
+  <text x="55" y="166" text-anchor="middle" fill="#aaa" font-size="9">right</text>
+
+  <!-- Stage 1: Bandwidth Filter -->
+  <rect x="120" y="45" width="120" height="150" rx="8" fill="none" stroke="#4a9" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="180" y="62" text-anchor="middle" fill="#4a9" font-size="10">Stage 1</text>
+  <rect x="135" y="70" width="90" height="35" rx="4" fill="#1a3a2e" stroke="#4a9"/>
+  <text x="180" y="92" text-anchor="middle" fill="#4a9" font-size="10">BW Filter L</text>
+  <rect x="135" y="120" width="90" height="35" rx="4" fill="#1a3a2e" stroke="#4a9"/>
+  <text x="180" y="142" text-anchor="middle" fill="#4a9" font-size="10">BW Filter R</text>
+  <text x="180" y="180" text-anchor="middle" fill="#6cb" font-size="9">帯域制限</text>
+
+  <line x1="90" y1="85" x2="135" y2="87" stroke="#5b8dd9" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="90" y1="155" x2="135" y2="137" stroke="#5b8dd9" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Stage 2: Early Reflections -->
+  <rect x="270" y="45" width="160" height="80" rx="8" fill="none" stroke="#d9a55b" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="350" y="62" text-anchor="middle" fill="#d9a55b" font-size="10">Stage 2: Early Reflections</text>
+  <rect x="285" y="70" width="130" height="45" rx="4" fill="#3a2a1a" stroke="#d9a55b"/>
+  <text x="350" y="88" text-anchor="middle" fill="#d9a55b" font-size="10">8-Tap Delay x2</text>
+  <text x="350" y="102" text-anchor="middle" fill="#e8bf7a" font-size="9">壁の初期反射を模倣</text>
+
+  <line x1="225" y1="87" x2="285" y2="87" stroke="#4a9" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Stage 3: Pre-delay + Input Diffusion -->
+  <rect x="270" y="145" width="360" height="80" rx="8" fill="none" stroke="#a45bd9" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="450" y="162" text-anchor="middle" fill="#a45bd9" font-size="10">Stage 3: Pre-Delay + Input Diffusion</text>
+
+  <rect x="285" y="172" width="80" height="40" rx="4" fill="#2a1a3a" stroke="#a45bd9"/>
+  <text x="325" y="188" text-anchor="middle" fill="#c88aef" font-size="10">Pre-Delay</text>
+  <text x="325" y="200" text-anchor="middle" fill="#a45bd9" font-size="8">L+R→Mono</text>
+
+  <rect x="390" y="172" width="50" height="40" rx="4" fill="#2a1a3a" stroke="#a45bd9"/>
+  <text x="415" y="195" text-anchor="middle" fill="#c88aef" font-size="10">AP 0</text>
+  <rect x="450" y="172" width="50" height="40" rx="4" fill="#2a1a3a" stroke="#a45bd9"/>
+  <text x="475" y="195" text-anchor="middle" fill="#c88aef" font-size="10">AP 1</text>
+  <rect x="510" y="172" width="50" height="40" rx="4" fill="#2a1a3a" stroke="#a45bd9"/>
+  <text x="535" y="195" text-anchor="middle" fill="#c88aef" font-size="10">AP 2</text>
+  <rect x="570" y="172" width="50" height="40" rx="4" fill="#2a1a3a" stroke="#a45bd9"/>
+  <text x="595" y="195" text-anchor="middle" fill="#c88aef" font-size="10">AP 3</text>
+
+  <line x1="225" y1="137" x2="260" y2="192" stroke="#4a9" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="365" y1="192" x2="390" y2="192" stroke="#a45bd9" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="440" y1="192" x2="450" y2="192" stroke="#a45bd9" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="500" y1="192" x2="510" y2="192" stroke="#a45bd9" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="560" y1="192" x2="570" y2="192" stroke="#a45bd9" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- Stage 4: Tank -->
+  <rect x="265" y="250" width="600" height="240" rx="8" fill="none" stroke="#d95b5b" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="565" y="268" text-anchor="middle" fill="#d95b5b" font-size="11" font-weight="bold">Stage 4: Tank (フィードバック残響ネットワーク)</text>
+
+  <rect x="280" y="280" width="275" height="55" rx="6" fill="#3a1a1a" stroke="#d95b5b"/>
+  <text x="290" y="297" fill="#f99" font-size="10">Left Tank:</text>
+  <text x="290" y="315" fill="#fcc" font-size="9">AP4T[0] → Delay[0] → Damp[0] → AP4T[1] → Delay[1]</text>
+  <text x="290" y="328" fill="#d95b5b" font-size="8">  882      6615     LPF      2646      5292 samples</text>
+
+  <rect x="280" y="355" width="275" height="55" rx="6" fill="#3a1a1a" stroke="#d95b5b"/>
+  <text x="290" y="372" fill="#f99" font-size="10">Right Tank:</text>
+  <text x="290" y="390" fill="#fcc" font-size="9">AP4T[2] → Delay[2] → Damp[1] → AP4T[3] → Delay[3]</text>
+  <text x="290" y="403" fill="#d95b5b" font-size="8">  1323     6174     LPF      3924      4851 samples</text>
+
+  <path d="M555,308 L580,308 L580,380 L555,380" fill="none" stroke="#ff6b6b" stroke-width="1.5" marker-end="url(#arrowRed)"/>
+  <text x="588" y="348" fill="#ff6b6b" font-size="9" transform="rotate(90,588,348)">×Decay</text>
+  <path d="M280,380 L260,380 L260,308 L280,308" fill="none" stroke="#ff6b6b" stroke-width="1.5" marker-end="url(#arrowRed)"/>
+  <text x="250" y="348" fill="#ff6b6b" font-size="9" transform="rotate(-90,250,348)">×Decay</text>
+
+  <line x1="620" y1="192" x2="650" y2="192" stroke="#a45bd9" stroke-width="1.5"/>
+  <path d="M650,192 L650,308 L555,308" fill="none" stroke="#a45bd9" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4,2"/>
+  <path d="M650,192 L650,380 L555,380" fill="none" stroke="#a45bd9" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4,2"/>
+  <text x="660" y="250" fill="#c88aef" font-size="9">smearedInput</text>
+
+  <!-- Output Tapping -->
+  <rect x="580" y="280" width="270" height="130" rx="6" fill="#1a2a3a" stroke="#5bd9d9" stroke-width="1.5"/>
+  <text x="715" y="300" text-anchor="middle" fill="#5bd9d9" font-size="11" font-weight="bold">Output Tapping</text>
+  <text x="590" y="318" fill="#8ef" font-size="9">Out L = Delay[2]のtap1,2 - AP4T[3]のtap1</text>
+  <text x="590" y="333" fill="#8ef" font-size="9">       + Delay[3]のtap1 - Delay[0]のtap1</text>
+  <text x="590" y="348" fill="#8ef" font-size="9">       - AP4T[1]のtap1 - Delay[1]のtap1</text>
+  <text x="590" y="370" fill="#aef" font-size="9">Out R = Delay[0]のtap2,3 - AP4T[1]のtap2</text>
+  <text x="590" y="385" fill="#aef" font-size="9">       + Delay[1]のtap2 - Delay[2]のtap3</text>
+  <text x="590" y="400" fill="#aef" font-size="9">       - AP4T[3]のtap2 - Delay[3]のtap2</text>
+
+  <!-- Mix stage -->
+  <rect x="690" y="435" width="150" height="55" rx="6" fill="#2a2a1a" stroke="#d9d95b" stroke-width="1.5"/>
+  <text x="765" y="455" text-anchor="middle" fill="#d9d95b" font-size="10">Mix (Dry/Wet)</text>
+  <text x="765" y="470" text-anchor="middle" fill="#eee" font-size="9">EarlyMix で ER と</text>
+  <text x="765" y="482" text-anchor="middle" fill="#eee" font-size="9">Tank 出力をブレンド</text>
+
+  <path d="M415,115 Q680,115 755,435" fill="none" stroke="#d9a55b" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#arrow)"/>
+  <line x1="715" y1="410" x2="715" y2="435" stroke="#5bd9d9" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Output -->
+  <rect x="790" y="60" width="80" height="50" rx="6" fill="#2d4a7a" stroke="#5b8dd9" stroke-width="1.5"/>
+  <text x="830" y="82" text-anchor="middle" fill="#fff" font-size="11">Output L</text>
+  <rect x="790" y="130" width="80" height="50" rx="6" fill="#2d4a7a" stroke="#5b8dd9" stroke-width="1.5"/>
+  <text x="830" y="152" text-anchor="middle" fill="#fff" font-size="11">Output R</text>
+
+  <path d="M840,435 L860,435 L860,105 L870,105" fill="none" stroke="#d9d95b" stroke-width="1.5"/>
+  <line x1="860" y1="85" x2="870" y2="85" stroke="#d9d95b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="860" y1="155" x2="870" y2="155" stroke="#d9d95b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="none" stroke="#ccc" stroke-width="1"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="none" stroke="#ff6b6b" stroke-width="1"/>
+    </marker>
+  </defs>
+</svg>

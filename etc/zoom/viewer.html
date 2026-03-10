@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZOOM MS-50G+ Effect Documentation</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #1a1a2e;
+  --bg2: #16213e;
+  --bg3: #0f3460;
+  --fg: #e0e0e0;
+  --fg2: #a0a0b0;
+  --accent: #e94560;
+  --accent2: #533483;
+  --border: #2a2a4e;
+  --link: #6ec6ff;
+  --code-bg: #0d1117;
+  --table-head: #1e2d4a;
+  --table-row: #1a1a2e;
+  --table-row-alt: #16213e;
+  --sidebar-w: 280px;
+}
+html, body { height: 100%; font-family: 'Segoe UI', 'Meiryo', sans-serif; background: var(--bg); color: var(--fg); }
+
+/* Layout */
+.app { display: flex; height: 100vh; }
+.sidebar {
+  width: var(--sidebar-w); min-width: var(--sidebar-w);
+  background: var(--bg2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.main { flex: 1; overflow-y: auto; padding: 2rem 3rem; }
+
+/* Sidebar */
+.sidebar-header {
+  padding: 1rem; background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-header h1 { font-size: 1rem; color: var(--accent); }
+.sidebar-header p { font-size: 0.75rem; color: var(--fg2); margin-top: 0.25rem; }
+.search-box {
+  width: 100%; padding: 0.5rem; margin-top: 0.5rem;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--fg); font-size: 0.85rem; outline: none;
+}
+.search-box:focus { border-color: var(--accent); }
+.sidebar-content { flex: 1; overflow-y: auto; padding: 0.5rem 0; }
+.category-label {
+  padding: 0.4rem 1rem; font-size: 0.7rem; font-weight: 700;
+  color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em;
+  position: sticky; top: 0; background: var(--bg2); z-index: 1;
+}
+.effect-item {
+  padding: 0.4rem 1rem 0.4rem 1.5rem; cursor: pointer;
+  font-size: 0.85rem; color: var(--fg2);
+  display: flex; justify-content: space-between; align-items: center;
+  transition: background 0.15s;
+}
+.effect-item:hover { background: var(--bg3); color: var(--fg); }
+.effect-item.active { background: var(--accent2); color: #fff; }
+.effect-item .dsp { font-size: 0.7rem; color: var(--fg2); opacity: 0.6; }
+
+/* Content */
+.welcome { text-align: center; padding: 4rem 2rem; color: var(--fg2); }
+.welcome h2 { color: var(--fg); margin-bottom: 1rem; }
+.content h1 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; margin: 1.5rem 0 1rem; font-size: 1.6rem; }
+.content h2 { color: var(--link); margin: 2rem 0 0.75rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+.content h3 { color: #c0c0e0; margin: 1.5rem 0 0.5rem; font-size: 1.1rem; }
+.content h4 { color: var(--fg2); margin: 1.2rem 0 0.4rem; font-size: 0.95rem; }
+.content p { margin: 0.5rem 0; line-height: 1.6; }
+.content strong { color: var(--fg); }
+.content a { color: var(--link); text-decoration: none; }
+.content a:hover { text-decoration: underline; }
+.content code {
+  background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9em; color: #ff9e64;
+}
+.content pre {
+  background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 1rem; margin: 0.75rem 0; overflow-x: auto;
+}
+.content pre code { background: none; padding: 0; color: var(--fg); font-size: 0.85rem; }
+.content table {
+  border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.85rem;
+}
+.content th {
+  background: var(--table-head); padding: 0.5rem 0.75rem;
+  text-align: left; border: 1px solid var(--border); font-weight: 600; color: var(--link);
+}
+.content td {
+  padding: 0.4rem 0.75rem; border: 1px solid var(--border);
+}
+.content tr:nth-child(odd) td { background: var(--table-row); }
+.content tr:nth-child(even) td { background: var(--table-row-alt); }
+.content blockquote {
+  border-left: 3px solid var(--accent); margin: 0.75rem 0;
+  padding: 0.5rem 1rem; background: rgba(233,69,96,0.05); color: var(--fg2);
+}
+.content ul, .content ol { margin: 0.5rem 0 0.5rem 1.5rem; }
+.content li { margin: 0.25rem 0; line-height: 1.5; }
+.content hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+
+/* Toolbar */
+.toolbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.5rem 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border);
+}
+.toolbar .path { font-size: 0.8rem; color: var(--fg2); font-family: monospace; }
+.toolbar .actions { display: flex; gap: 0.5rem; }
+.btn {
+  padding: 0.3rem 0.7rem; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg2); color: var(--fg2); cursor: pointer; font-size: 0.75rem;
+}
+.btn:hover { background: var(--bg3); color: var(--fg); }
+.btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { width: 100%; min-width: 0; position: fixed; z-index: 10; transform: translateX(-100%); transition: transform 0.3s; }
+  .sidebar.open { transform: translateX(0); }
+  .main { padding: 1rem; }
+}
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1>ZOOM MS-50G+</h1>
+      <p>Effect Algorithm Documentation</p>
+      <input type="text" class="search-box" id="search" placeholder="Search effects...">
+    </div>
+    <div class="sidebar-content" id="effectList"></div>
+  </div>
+  <div class="main" id="main">
+    <div class="welcome">
+      <h2>ZOOM MS-50G+ Effect Documentation</h2>
+      <p>左のリストからエフェクトを選択してください</p>
+      <p style="margin-top:1rem;font-size:0.85rem;">130 effects analyzed from ZD2 binary files</p>
+      <p style="font-size:0.8rem;color:var(--fg2);">TI C6000 DSP disassembly + coefficient table analysis</p>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+<script>
+const EFFECTS = [
+  {"path":"effects/01_DYNAMICS/BLACKOPT.md","name":"BlackOpt","base":"BLACKOPT","category":"Dynamics","dsp":"14.27%"},
+  {"path":"effects/01_DYNAMICS/COMP.md","name":"Comp","base":"COMP","category":"Dynamics","dsp":"5.58%"},
+  {"path":"effects/01_DYNAMICS/GRAYCOMP.md","name":"GrayComp","base":"GRAYCOMP","category":"Dynamics","dsp":"20.18%"},
+  {"path":"effects/01_DYNAMICS/LMT1176.md","name":"LMT-76","base":"LMT1176","category":"Dynamics","dsp":"13.45%"},
+  {"path":"effects/01_DYNAMICS/MUTESW.md","name":"MuteSW","base":"MUTESW","category":"Dynamics","dsp":"7.14%"},
+  {"path":"effects/01_DYNAMICS/N_GATE.md","name":"NoiseGate","base":"N_GATE","category":"Dynamics","dsp":"6.81%"},
+  {"path":"effects/01_DYNAMICS/OPTCOMP.md","name":"OptComp","base":"OPTCOMP","category":"Dynamics","dsp":"12.72%"},
+  {"path":"effects/01_DYNAMICS/RACKCOMP.md","name":"RackComp","base":"RACKCOMP","category":"Dynamics","dsp":"7.30%"},
+  {"path":"effects/01_DYNAMICS/SLWATK.md","name":"SlowATTCK","base":"SLWATK","category":"Dynamics","dsp":"5.41%"},
+  {"path":"effects/01_DYNAMICS/ZNR.md","name":"ZNR","base":"ZNR","category":"Dynamics","dsp":"4.35%"},
+  {"path":"effects/02_FILTER/AUTOWAH.md","name":"AutoWah","base":"AUTOWAH","category":"Filter","dsp":"7.06%"},
+  {"path":"effects/02_FILTER/CRY.md","name":"Cry","base":"CRY","category":"Filter","dsp":"5.90%"},
+  {"path":"effects/02_FILTER/EXCITER.md","name":"Exciter","base":"EXCITER","category":"Filter","dsp":"8.70%"},
+  {"path":"effects/02_FILTER/GTGEQ71U.md","name":"Gt GEQ 7","base":"GTGEQ71U","category":"Filter","dsp":"5.74%"},
+  {"path":"effects/02_FILTER/GT_GEQ1U.md","name":"Gt GEQ","base":"GT_GEQ1U","category":"Filter","dsp":"5.90%"},
+  {"path":"effects/02_FILTER/LFO_FLTR.md","name":"LFO FLTR","base":"LFO_FLTR","category":"Filter","dsp":"8.61%"},
+  {"path":"effects/02_FILTER/LOWPASSF.md","name":"LowPassFL","base":"LOWPASSF","category":"Filter","dsp":"8.12%"},
+  {"path":"effects/02_FILTER/PARAEQ.md","name":"ParaEQ","base":"PARAEQ","category":"Filter","dsp":"5.08%"},
+  {"path":"effects/02_FILTER/RESONANC.md","name":"Resonance","base":"RESONANC","category":"Filter","dsp":"7.96%"},
+  {"path":"effects/02_FILTER/RNDMFLTR.md","name":"RndmFLTR","base":"RNDMFLTR","category":"Filter","dsp":"8.20%"},
+  {"path":"effects/02_FILTER/SEQFLTR.md","name":"SeqFLTR","base":"SEQFLTR","category":"Filter","dsp":"8.53%"},
+  {"path":"effects/02_FILTER/STEP.md","name":"Step","base":"STEP","category":"Filter","dsp":"7.96%"},
+  {"path":"effects/02_FILTER/STGTGE1U.md","name":"St Gt GEQ","base":"STGTGE1U","category":"Filter","dsp":"10.74%"},
+  {"path":"effects/03_DRIVE/ACOSIM.md","name":"Aco.Sim","base":"ACOSIM","category":"Drive","dsp":"12.80%"},
+  {"path":"effects/03_DRIVE/BGTHRTTL.md","name":"HG THRTTL","base":"BGTHRTTL","category":"Drive","dsp":"26.74%"},
+  {"path":"effects/03_DRIVE/BG_GRID.md","name":"BG GRID","base":"BG_GRID","category":"Drive","dsp":"16.40%"},
+  {"path":"effects/03_DRIVE/DISTPLUS.md","name":"DIST Plus","base":"DISTPLUS","category":"Drive","dsp":"12.72%"},
+  {"path":"effects/03_DRIVE/DIST_1.md","name":"DIST 1","base":"DIST_1","category":"Drive","dsp":"14.52%"},
+  {"path":"effects/03_DRIVE/DYNDRIVE.md","name":"DYN Drive","base":"DYNDRIVE","category":"Drive","dsp":"20.92%"},
+  {"path":"effects/03_DRIVE/EP_STOMP.md","name":"EP Stomp","base":"EP_STOMP","category":"Drive","dsp":"12.96%"},
+  {"path":"effects/03_DRIVE/GOLD_DRV.md","name":"GoldDrive","base":"GOLD_DRV","category":"Drive","dsp":"21.00%"},
+  {"path":"effects/03_DRIVE/MTLWRLD.md","name":"MetalWRLD","base":"MTLWRLD","category":"Drive","dsp":"12.80%"},
+  {"path":"effects/03_DRIVE/NYC_MUFF.md","name":"NYC Muff","base":"NYC_MUFF","category":"Drive","dsp":"13.94%"},
+  {"path":"effects/03_DRIVE/OCTFUZZ.md","name":"OctFuzz","base":"OCTFUZZ","category":"Drive","dsp":"30.76%"},
+  {"path":"effects/03_DRIVE/OUT_BST.md","name":"OutputBST","base":"OUT_BST","category":"Drive","dsp":"5.33%"},
+  {"path":"effects/03_DRIVE/RCBOOST.md","name":"RC Boost","base":"RCBOOST","category":"Drive","dsp":"15.09%"},
+  {"path":"effects/03_DRIVE/REDCRUNC.md","name":"RedCrunch","base":"REDCRUNC","category":"Drive","dsp":"17.55%"},
+  {"path":"effects/03_DRIVE/SPTBOOST.md","name":"SpotBoost","base":"SPTBOOST","category":"Drive","dsp":"14.19%"},
+  {"path":"effects/03_DRIVE/SQUEAK.md","name":"Squeak","base":"SQUEAK","category":"Drive","dsp":"12.55%"},
+  {"path":"effects/03_DRIVE/SWEETDRV.md","name":"SweetDrv","base":"SWEETDRV","category":"Drive","dsp":"28.30%"},
+  {"path":"effects/03_DRIVE/TB_MK15.md","name":"TB MK1.5","base":"TB_MK15","category":"Drive","dsp":"20.02%"},
+  {"path":"effects/03_DRIVE/TS_DRIVE.md","name":"TS Drive","base":"TS_DRIVE","category":"Drive","dsp":"15.75%"},
+  {"path":"effects/03_DRIVE/UPOCTBST.md","name":"UpOctBSTR","base":"UPOCTBST","category":"Drive","dsp":"17.39%"},
+  {"path":"effects/03_DRIVE/VIOLETDS.md","name":"VioletDST","base":"VIOLETDS","category":"Drive","dsp":"13.62%"},
+  {"path":"effects/03_DRIVE/ZEN_DRV.md","name":"Zen O.DRV","base":"ZEN_DRV","category":"Drive","dsp":"18.04%"},
+  {"path":"effects/04_AMP/BGMK1_1U.md","name":"BG MK1","base":"BGMK1_1U","category":"Amp Model","dsp":"35.76%"},
+  {"path":"effects/04_AMP/BGMK3_1U.md","name":"BG MK3","base":"BGMK3_1U","category":"Amp Model","dsp":"35.93%"},
+  {"path":"effects/04_AMP/DZ_DRV1U.md","name":"DZ DRV","base":"DZ_DRV1U","category":"Amp Model","dsp":"27.72%"},
+  {"path":"effects/04_AMP/FDBMAN1U.md","name":"FD B-MAN","base":"FDBMAN1U","category":"Amp Model","dsp":"29.94%"},
+  {"path":"effects/04_AMP/FDDLXR1U.md","name":"FD DLXR","base":"FDDLXR1U","category":"Amp Model","dsp":"31.00%"},
+  {"path":"effects/04_AMP/FDMSTR1U.md","name":"FD MASTER","base":"FDMSTR1U","category":"Amp Model","dsp":"29.12%"},
+  {"path":"effects/04_AMP/FD_TWR1U.md","name":"FD TWNR","base":"FD_TWR1U","category":"Amp Model","dsp":"31.00%"},
+  {"path":"effects/04_AMP/HW100_1U.md","name":"HW 100","base":"HW100_1U","category":"Amp Model","dsp":"28.46%"},
+  {"path":"effects/04_AMP/MACH301U.md","name":"MATCH30","base":"MACH301U","category":"Amp Model","dsp":"34.86%"},
+  {"path":"effects/04_AMP/MS19591U.md","name":"MS 1959","base":"MS19591U","category":"Amp Model","dsp":"31.50%"},
+  {"path":"effects/04_AMP/MS45OS1U.md","name":"MS 45os","base":"MS45OS1U","category":"Amp Model","dsp":"31.50%"},
+  {"path":"effects/04_AMP/MS800_1U.md","name":"MS 800","base":"MS800_1U","category":"Amp Model","dsp":"31.99%"},
+  {"path":"effects/04_AMP/ORG1201U.md","name":"ORG120","base":"ORG1201U","category":"Amp Model","dsp":"33.63%"},
+  {"path":"effects/04_AMP/RCTORG1U.md","name":"Recti ORG","base":"RCTORG1U","category":"Amp Model","dsp":"29.12%"},
+  {"path":"effects/04_AMP/UK30A_1U.md","name":"UK 30A","base":"UK30A_1U","category":"Amp Model","dsp":"37.57%"},
+  {"path":"effects/04_AMP/XTSBLU1U.md","name":"XtasyBlue","base":"XTSBLU1U","category":"Amp Model","dsp":"35.27%"},
+  {"path":"effects/05_CABINET/BGN4X12.md","name":"BGN4x12","base":"BGN4X12","category":"Cabinet","dsp":"8.84%"},
+  {"path":"effects/05_CABINET/DZ4X12F.md","name":"DZ4x12F","base":"DZ4X12F","category":"Cabinet","dsp":"9.10%"},
+  {"path":"effects/05_CABINET/FD2X12.md","name":"FD2x12","base":"FD2X12","category":"Cabinet","dsp":"8.84%"},
+  {"path":"effects/05_CABINET/FDB4X10.md","name":"FD-B4x10","base":"FDB4X10","category":"Cabinet","dsp":"8.84%"},
+  {"path":"effects/05_CABINET/FDDX1X12.md","name":"FD-DX1x12","base":"FDDX1X12","category":"Cabinet","dsp":"8.84%"},
+  {"path":"effects/05_CABINET/FDMA2X12.md","name":"FD MA2x12","base":"FDMA2X12","category":"Cabinet","dsp":"9.10%"},
+  {"path":"effects/05_CABINET/HW4X12.md","name":"HW4x12","base":"HW4X12","category":"Cabinet","dsp":"8.84%"},
+  {"path":"effects/05_CABINET/MA2X12.md","name":"MA2x12","base":"MA2X12","category":"Cabinet","dsp":"9.10%"},
+  {"path":"effects/05_CABINET/MK1_1X12.md","name":"MK1 1x12","base":"MK1_1X12","category":"Cabinet","dsp":"8.84%"},
+  {"path":"effects/05_CABINET/MK3_1X12.md","name":"MK3 1x12","base":"MK3_1X12","category":"Cabinet","dsp":"8.84%"},
+  {"path":"effects/05_CABINET/MS4X12.md","name":"MS4x12","base":"MS4X12","category":"Cabinet","dsp":"8.84%"},
+  {"path":"effects/05_CABINET/MS4X12AL.md","name":"MS4x12AL","base":"MS4X12AL","category":"Cabinet","dsp":"9.02%"},
+  {"path":"effects/05_CABINET/MS4X12GB.md","name":"MS4x12GB","base":"MS4X12GB","category":"Cabinet","dsp":"9.02%"},
+  {"path":"effects/05_CABINET/ORG_4X12.md","name":"ORG4x12","base":"ORG_4X12","category":"Cabinet","dsp":"9.02%"},
+  {"path":"effects/05_CABINET/RCT4X12.md","name":"RCT4x12","base":"RCT4X12","category":"Cabinet","dsp":"9.02%"},
+  {"path":"effects/05_CABINET/UK2X12.md","name":"UK2x12","base":"UK2X12","category":"Cabinet","dsp":"8.84%"},
+  {"path":"effects/06_MODULATION/ANA234CH.md","name":"AnalogCho","base":"ANA234CH","category":"Modulation","dsp":"9.52%"},
+  {"path":"effects/06_MODULATION/BENDCHO.md","name":"BendCho","base":"BENDCHO","category":"Modulation","dsp":"8.70%"},
+  {"path":"effects/06_MODULATION/CHORUS.md","name":"Chorus","base":"CHORUS","category":"Modulation","dsp":"6.77%"},
+  {"path":"effects/06_MODULATION/CLONECHO.md","name":"CloneCho","base":"CLONECHO","category":"Modulation","dsp":"10.25%"},
+  {"path":"effects/06_MODULATION/CRNTRI3S.md","name":"CoronaTri","base":"CRNTRI3S","category":"Modulation","dsp":"21.00%"},
+  {"path":"effects/06_MODULATION/DETUNE.md","name":"Detune","base":"DETUNE","category":"Modulation","dsp":"5.90%"},
+  {"path":"effects/06_MODULATION/DUOPHA1U.md","name":"Duo Phase","base":"DUOPHA1U","category":"Modulation","dsp":"9.84%"},
+  {"path":"effects/06_MODULATION/HPS.md","name":"HPS","base":"HPS","category":"Modulation","dsp":"6.64%"},
+  {"path":"effects/06_MODULATION/MONOPITC.md","name":"MonoPitch","base":"MONOPITC","category":"Modulation","dsp":"6.81%"},
+  {"path":"effects/06_MODULATION/OCTAVE.md","name":"Octave","base":"OCTAVE","category":"Modulation","dsp":"6.73%"},
+  {"path":"effects/06_MODULATION/PHASER.md","name":"Phaser","base":"PHASER","category":"Modulation","dsp":"7.46%"},
+  {"path":"effects/06_MODULATION/PITCHSHF.md","name":"PitchSHFT","base":"PITCHSHF","category":"Modulation","dsp":"6.89%"},
+  {"path":"effects/06_MODULATION/RINGMOD.md","name":"RingMod","base":"RINGMOD","category":"Modulation","dsp":"4.76%"},
+  {"path":"effects/06_MODULATION/SLICER.md","name":"Slicer","base":"SLICER","category":"Modulation","dsp":"8.28%"},
+  {"path":"effects/06_MODULATION/STEREOCH.md","name":"StereoCho","base":"STEREOCH","category":"Modulation","dsp":"7.46%"},
+  {"path":"effects/06_MODULATION/STONEPHA.md","name":"StonePha","base":"STONEPHA","category":"Modulation","dsp":"7.79%"},
+  {"path":"effects/06_MODULATION/SUPERCHO.md","name":"SuperCho","base":"SUPERCHO","category":"Modulation","dsp":"8.45%"},
+  {"path":"effects/06_MODULATION/THEVIBE.md","name":"TheVibe","base":"THEVIBE","category":"Modulation","dsp":"9.76%"},
+  {"path":"effects/06_MODULATION/TREMOLO.md","name":"Tremolo","base":"TREMOLO","category":"Modulation","dsp":"8.78%"},
+  {"path":"effects/06_MODULATION/VIBRATO.md","name":"Vibrato","base":"VIBRATO","category":"Modulation","dsp":"7.38%"},
+  {"path":"effects/06_MODULATION/VINFLNGR.md","name":"VinFLNGR","base":"VINFLNGR","category":"Modulation","dsp":"5.90%"},
+  {"path":"effects/06_MODULATION/WRPPHASE.md","name":"WarpPhase","base":"WRPPHASE","category":"Modulation","dsp":"9.02%"},
+  {"path":"effects/07_SFX/AUTOPAN.md","name":"AutoPan","base":"AUTOPAN","category":"SFX","dsp":"4.10%"},
+  {"path":"effects/07_SFX/BOMBER.md","name":"Bomber","base":"BOMBER","category":"SFX","dsp":"8.45%"},
+  {"path":"effects/07_SFX/HOTSPICE.md","name":"HotSpice","base":"HOTSPICE","category":"SFX","dsp":"18.04%"},
+  {"path":"effects/07_SFX/LPROLL3S.md","name":"LoopRoll","base":"LPROLL3S","category":"SFX","dsp":"6.36%"},
+  {"path":"effects/08_DELAY/ANDLY_3S.md","name":"AnalogDly","base":"ANDLY_3S","category":"Delay","dsp":"5.50%"},
+  {"path":"effects/08_DELAY/APANDL3S.md","name":"A-Pan DLY","base":"APANDL3S","category":"Delay","dsp":"10.17%"},
+  {"path":"effects/08_DELAY/DELAY_3S.md","name":"Delay","base":"DELAY_3S","category":"Delay","dsp":"5.50%"},
+  {"path":"effects/08_DELAY/DUALDL3S.md","name":"Dual DLY","base":"DUALDL3S","category":"Delay","dsp":"16.73%"},
+  {"path":"effects/08_DELAY/FLTRDLY.md","name":"FilterDly","base":"FLTRDLY","category":"Delay","dsp":"8.37%"},
+  {"path":"effects/08_DELAY/ICEDLY3S.md","name":"ICE Delay","base":"ICEDLY3S","category":"Delay","dsp":"29.20%"},
+  {"path":"effects/08_DELAY/MODDELAY.md","name":"ModDelay","base":"MODDELAY","category":"Delay","dsp":"7.63%"},
+  {"path":"effects/08_DELAY/PHASDL1U.md","name":"PhaseDly","base":"PHASDL1U","category":"Delay","dsp":"11.89%"},
+  {"path":"effects/08_DELAY/PPDLY_3S.md","name":"P-P Delay","base":"PPDLY_3S","category":"Delay","dsp":"5.82%"},
+  {"path":"effects/08_DELAY/PTCHDL3S.md","name":"Pitch DLY","base":"PTCHDL3S","category":"Delay","dsp":"10.01%"},
+  {"path":"effects/08_DELAY/RVRSDL3S.md","name":"ReverseDL","base":"RVRSDL3S","category":"Delay","dsp":"5.82%"},
+  {"path":"effects/08_DELAY/SLATDL3S.md","name":"SlwAtkDly","base":"SLATDL3S","category":"Delay","dsp":"17.39%"},
+  {"path":"effects/08_DELAY/SLPBKD3S.md","name":"SlapBackD","base":"SLPBKD3S","category":"Delay","dsp":"13.70%"},
+  {"path":"effects/08_DELAY/SOFTEC3S.md","name":"SoftEcho","base":"SOFTEC3S","category":"Delay","dsp":"26.08%"},
+  {"path":"effects/08_DELAY/TAPEECHO.md","name":"TapeEcho","base":"TAPEECHO","category":"Delay","dsp":"6.97%"},
+  {"path":"effects/08_DELAY/TPEC3_3S.md","name":"TapeEcho3","base":"TPEC3_3S","category":"Delay","dsp":"17.88%"},
+  {"path":"effects/09_REVERB/AIR.md","name":"Air","base":"AIR","category":"Reverb","dsp":"6.40%"},
+  {"path":"effects/09_REVERB/CHAMBER.md","name":"Chamber","base":"CHAMBER","category":"Reverb","dsp":"22.64%"},
+  {"path":"effects/09_REVERB/CHURCH.md","name":"Church","base":"CHURCH","category":"Reverb","dsp":"29.53%"},
+  {"path":"effects/09_REVERB/EARLYREF.md","name":"EarlyRef","base":"EARLYREF","category":"Reverb","dsp":"10.01%"},
+  {"path":"effects/09_REVERB/FDSPRING.md","name":"FD Spring","base":"FDSPRING","category":"Reverb","dsp":"24.77%"},
+  {"path":"effects/09_REVERB/GATE_REV.md","name":"GateRev","base":"GATE_REV","category":"Reverb","dsp":"20.10%"},
+  {"path":"effects/09_REVERB/HALL.md","name":"Hall","base":"HALL","category":"Reverb","dsp":"10.83%"},
+  {"path":"effects/09_REVERB/HD_HALL.md","name":"HD Hall","base":"HD_HALL","category":"Reverb","dsp":"25.92%"},
+  {"path":"effects/09_REVERB/PLATEREV.md","name":"Plate","base":"PLATEREV","category":"Reverb","dsp":"20.51%"},
+  {"path":"effects/09_REVERB/ROOM.md","name":"Room","base":"ROOM","category":"Reverb","dsp":"9.84%"},
+  {"path":"effects/09_REVERB/SPRING.md","name":"Spring","base":"SPRING","category":"Reverb","dsp":"9.27%"}
+];
+
+// Configure marked
+marked.setOptions({
+  highlight: function(code, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang }).value;
+    }
+    return hljs.highlightAuto(code).value;
+  },
+  gfm: true,
+  breaks: false,
+});
+
+let currentPath = null;
+let autoRefresh = false;
+let refreshTimer = null;
+
+// Build sidebar
+function buildSidebar(filter = '') {
+  const list = document.getElementById('effectList');
+  list.innerHTML = '';
+  let currentCat = '';
+  const lowerFilter = filter.toLowerCase();
+
+  for (const e of EFFECTS) {
+    if (filter && !e.name.toLowerCase().includes(lowerFilter) &&
+        !e.base.toLowerCase().includes(lowerFilter) &&
+        !e.category.toLowerCase().includes(lowerFilter)) continue;
+
+    if (e.category !== currentCat) {
+      currentCat = e.category;
+      const label = document.createElement('div');
+      label.className = 'category-label';
+      label.textContent = currentCat;
+      list.appendChild(label);
+    }
+
+    const item = document.createElement('div');
+    item.className = 'effect-item' + (e.path === currentPath ? ' active' : '');
+    item.innerHTML = '<span>' + e.name + '</span><span class="dsp">' + e.dsp + '</span>';
+    item.onclick = () => loadEffect(e.path);
+    list.appendChild(item);
+  }
+}
+
+// Load and render effect
+async function loadEffect(path) {
+  currentPath = path;
+  buildSidebar(document.getElementById('search').value);
+
+  try {
+    const resp = await fetch(path + '?t=' + Date.now());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const md = await resp.text();
+    const html = marked.parse(md);
+
+    const main = document.getElementById('main');
+    const name = EFFECTS.find(e => e.path === path)?.name || path;
+
+    main.innerHTML =
+      '<div class="toolbar">' +
+        '<span class="path">' + path + '</span>' +
+        '<div class="actions">' +
+          '<button class="btn" onclick="loadEffect(currentPath)" title="Reload">Reload</button>' +
+          '<button class="btn' + (autoRefresh ? ' active' : '') + '" id="autoRefreshBtn" onclick="toggleAutoRefresh()">Auto</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="content">' + html + '</div>';
+
+    // Re-highlight code blocks
+    document.querySelectorAll('.content pre code').forEach(el => {
+      hljs.highlightElement(el);
+    });
+
+    // Update URL hash
+    history.replaceState(null, '', '#' + path);
+  } catch (err) {
+    document.getElementById('main').innerHTML =
+      '<div class="welcome"><h2>Error</h2><p>' + err.message + '</p></div>';
+  }
+}
+
+// Auto-refresh
+function toggleAutoRefresh() {
+  autoRefresh = !autoRefresh;
+  const btn = document.getElementById('autoRefreshBtn');
+  if (btn) btn.className = 'btn' + (autoRefresh ? ' active' : '');
+
+  if (autoRefresh && currentPath) {
+    refreshTimer = setInterval(() => {
+      if (currentPath) loadEffect(currentPath);
+    }, 2000);
+  } else {
+    clearInterval(refreshTimer);
+  }
+}
+
+// Search
+document.getElementById('search').addEventListener('input', function() {
+  buildSidebar(this.value);
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  if (e.key === '/' && document.activeElement !== document.getElementById('search')) {
+    e.preventDefault();
+    document.getElementById('search').focus();
+  }
+  if (e.key === 'Escape') {
+    document.getElementById('search').blur();
+    document.getElementById('search').value = '';
+    buildSidebar();
+  }
+});
+
+// Init
+buildSidebar();
+
+// Load from hash
+if (location.hash) {
+  const path = location.hash.slice(1);
+  if (EFFECTS.find(e => e.path === path)) {
+    loadEffect(path);
+  }
+}
+</script>
+</body>
+</html>

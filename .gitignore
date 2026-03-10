@@ -1,12 +1,10 @@
 # Build directories
 build/
-build_win/
-simulator/build/
-simulator/build_win/
+build_*/
 cmake-build-*/
 
 # Local configuration (user-specific)
-config/local.cmake
+cmake/local.cmake
 
 # IDE
 .vscode/
@@ -20,6 +18,11 @@ config/local.cmake
 *.a
 *.so
 *.dylib
+*.exe
+*.bin
+*.hex
+*.elf
+*.map
 
 # Claude Code project files
 .claude/
@@ -27,3 +30,17 @@ config/local.cmake
 # OS
 .DS_Store
 Thumbs.db
+
+# Audio files
+*.wav
+*.m4a
+
+# Logs
+*.log
+
+# Runtime generated
+imgui.ini
+audio_settings.cfg
+
+# DaisyExamples (submodule or local copy)
+DaisyExamples/

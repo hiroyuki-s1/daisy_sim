@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上級 Drive | ZOOM DSP コース</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+:root { --bg:#f3efe7; --paper:#fffdfa; --ink:#1a2230; --muted:#5c6576; --line:#d4cdc0; --accent:#9a3412; --a2:#0f766e; --a3:#1d4ed8; --shadow:0 16px 40px rgba(26,34,48,.08); }
+body { font-family:"Yu Gothic UI","Meiryo",sans-serif; background:linear-gradient(180deg,#f3efe7,#ebe3d4); color:var(--ink); line-height:1.85; }
+.wrap { width:min(1160px,calc(100% - 32px)); margin:0 auto; }
+.hero,.card,.footer { background:rgba(255,253,250,.95); border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow); }
+.hero { margin:28px auto 20px; padding:28px; }
+.eyebrow { display:inline-block; padding:8px 14px; border-radius:999px; background:#fbe5db; color:var(--accent); font-weight:700; font-size:.88rem; }
+h1 { margin-top:14px; font-size:clamp(2rem,4vw,3.5rem); line-height:1.05; }
+.lead { margin-top:16px; color:var(--muted); }
+.nav { display:flex; gap:12px; flex-wrap:wrap; margin-top:18px; }
+.nav a { text-decoration:none; color:var(--ink); border:1px solid var(--line); padding:10px 16px; border-radius:999px; background:#fff; font-weight:700; }
+section { padding:16px 0; }
+.kicker { color:var(--accent); text-transform:uppercase; letter-spacing:.08em; font-size:.86rem; font-weight:700; }
+.section-title { margin-top:8px; font-size:clamp(1.45rem,3vw,2.3rem); line-height:1.14; }
+.intro { margin-top:10px; color:var(--muted); max-width:78ch; }
+.grid-2,.grid-3 { display:grid; gap:18px; }
+.grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.card { padding:22px; }
+.card h3 { margin-bottom:10px; font-size:1.1rem; }
+.eq { margin-top:12px; padding:14px 16px; background:#171d28; color:#eef4ff; border-radius:16px; font-family:Consolas,Monaco,monospace; overflow-x:auto; }
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; min-width:720px; }
+th,td { padding:12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--a3); font-size:.86rem; text-transform:uppercase; }
+.note { margin-top:14px; padding:14px 16px; background:rgba(15,118,110,.08); border-left:4px solid var(--a2); border-radius:0 16px 16px 0; }
+.footer { margin:28px auto 42px; padding:22px; }
+.footer ol { margin-left:20px; margin-top:10px; }
+@media (max-width:960px) { .grid-2,.grid-3 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <div class="wrap hero">
+    <span class="eyebrow">上級分冊 Drive</span>
+    <h1>Drive は「どんな非線形を、どこに、どれだけ入れるか」の設計問題です。</h1>
+    <p class="lead">同じ gain でも、soft clipping、hard clipping、asymmetric clipping、dynamic drive では倍音の出方が大きく変わります。drive 系を読むときは回路名よりも、nonlinearity と pre/post filter の位置を見た方が本質が見えます。</p>
+    <div class="nav">
+      <a href="advanced-zoom-dsp.html">上級ハブへ戻る</a>
+      <a href="advanced-amp.html">Amp 編</a>
+      <a href="dsp-lab.html">体験ラボ</a>
+    </div>
+  </div>
+
+  <section class="wrap">
+    <div class="kicker">Nonlinearity</div>
+    <h2 class="section-title">drive の個性は waveshaper の形でかなり決まります。</h2>
+    <div class="grid-3" style="margin-top:18px;">
+      <div class="card"><h3>soft clipping</h3><p>滑らかに飽和して、比較的自然な倍音増加を作ります。tube 的な質感の近似に使われやすいです。</p></div>
+      <div class="card"><h3>hard clipping</h3><p>急に切るので高次倍音が強く、aliasing にも厳しいです。aggressive な音になりやすいです。</p></div>
+      <div class="card"><h3>asymmetric clipping</h3><p>正負で違う歪み方をさせると偶数次倍音が増え、質感が変わります。</p></div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Pre And Post EQ</div>
+    <h2 class="section-title">歪みの前後の filter が、歪みそのものと同じくらい重要です。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>前段 filter</h3>
+        <p>低域を削ってから歪ませると、音像が締まりやすくなります。高域を削ればザラつきが減り、中域を押せば抜ける drive になります。</p>
+        <div class="eq">filtered = preFilter(x)
+shaped   = waveshape(filtered)</div>
+      </div>
+      <div class="card">
+        <h3>後段 filter</h3>
+        <p>歪みで増えた高調波を整理し、最終キャラクタを決めます。tone ノブの多くは post-filter 側に近い役割を持ちます。</p>
+        <div class="note">同じ waveshaper でも pre/post EQ を入れ替えるだけで別物に聞こえます。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Dynamic Behavior</div>
+    <h2 class="section-title">上級 drive は入力レベルによって歪み方が変わることがあります。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>dynamic drive</h3>
+        <p>包絡やピッキングに応じて gain や filter を変え、弾き方への追従感を作ります。Comp の envelope の知識がここで再利用できます。</p>
+      </div>
+      <div class="card">
+        <h3>bias / sag 的表現</h3>
+        <p>単純な static waveshaper ではなく、遅い成分を持たせて少しずつ歪み方が変わるようにすることで、アンプっぽい feel を作ることがあります。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Reading ZOOM Effects</div>
+    <h2 class="section-title">ZOOM の drive を読むときの実践的な観点</h2>
+    <div class="table-wrap card" style="margin-top:18px;">
+      <table>
+        <thead><tr><th>観点</th><th>見方</th><th>仮説</th></tr></thead>
+        <tbody>
+          <tr><td>DSP load</td><td>高いほど multi-stage, modulation, oversampling の可能性が増える</td><td>単純 drive か amp 寄りかを推測</td></tr>
+          <tr><td>tone パラメータ</td><td>前段か後段か</td><td>歪みの質そのものを変えるか、聞こえ方を変えるか</td></tr>
+          <tr><td>table 数</td><td>多いほど perceptual mapping や複数 stage の可能性</td><td>単純 clipping 以上の設計</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="wrap footer">
+    <h2>次に読むページ</h2>
+    <ol>
+      <li><a href="advanced-amp.html">advanced-amp.html</a> で amp model との違いを確認する</li>
+      <li><a href="dsp-lab.html">dsp-lab.html</a> の waveshaper セクションで oversampling 差を耳で聴く</li>
+      <li><a href="index.html">index.html</a> の Drive 群を DSP% と説明文で横比較する</li>
+    </ol>
+  </div>
+</body>
+</html>

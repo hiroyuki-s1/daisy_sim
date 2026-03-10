@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上級 Amp 全機種解説 | ZOOM DSP コース</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --bg:#f4efe6;
+  --paper:rgba(255,252,247,.96);
+  --ink:#18212f;
+  --muted:#5c6576;
+  --line:#d8cfbf;
+  --accent:#9a3412;
+  --a2:#0f766e;
+  --a3:#1d4ed8;
+  --soft:#f8e8de;
+  --shadow:0 18px 42px rgba(24,33,47,.09);
+}
+body {
+  font-family:"Yu Gothic UI","Meiryo",sans-serif;
+  background:
+    radial-gradient(circle at top right, rgba(255,255,255,.55), transparent 28%),
+    linear-gradient(180deg,#f4efe6,#e9dfcf 55%,#e3d8c8);
+  color:var(--ink);
+  line-height:1.82;
+}
+.wrap { width:min(1220px,calc(100% - 28px)); margin:0 auto; }
+.hero,.card,.footer,.model,.table-wrap,.flow,.compare { background:var(--paper); border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow); }
+.hero { margin:24px auto 18px; padding:30px; }
+.eyebrow { display:inline-block; padding:8px 14px; border-radius:999px; background:var(--soft); color:var(--accent); font-size:.88rem; font-weight:800; }
+h1 { margin-top:14px; font-size:clamp(2rem,4vw,3.7rem); line-height:1.05; }
+.lead { margin-top:16px; max-width:82ch; color:var(--muted); }
+.nav { display:flex; gap:10px; flex-wrap:wrap; margin-top:18px; }
+.nav a,.chips a { text-decoration:none; color:var(--ink); border:1px solid var(--line); background:#fff; padding:10px 15px; border-radius:999px; font-weight:700; }
+section { padding:14px 0; }
+.kicker { color:var(--accent); text-transform:uppercase; letter-spacing:.08em; font-size:.84rem; font-weight:800; }
+.section-title { margin-top:8px; font-size:clamp(1.45rem,2.8vw,2.35rem); line-height:1.15; }
+.intro { margin-top:10px; color:var(--muted); max-width:84ch; }
+.grid-2,.grid-3,.grid-4 { display:grid; gap:18px; }
+.grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.grid-4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.card,.compare,.flow,.table-wrap,.model { padding:22px; }
+.card h3,.model h3 { margin-bottom:8px; font-size:1.1rem; }
+.eq {
+  margin-top:12px;
+  padding:14px 16px;
+  border-radius:18px;
+  background:#171d28;
+  color:#edf5ff;
+  font-family:Consolas,Monaco,monospace;
+  overflow-x:auto;
+}
+.note {
+  margin-top:14px;
+  padding:13px 15px;
+  border-left:4px solid var(--a2);
+  background:rgba(15,118,110,.08);
+  border-radius:0 16px 16px 0;
+}
+.chips { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+.summary { margin-top:12px; display:flex; flex-wrap:wrap; gap:10px; }
+.pill { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background:#fff; border:1px solid var(--line); font-weight:700; font-size:.92rem; }
+.table-wrap { overflow-x:auto; }
+table { width:100%; min-width:980px; border-collapse:collapse; }
+th,td { padding:12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--a3); font-size:.84rem; text-transform:uppercase; }
+.models { display:grid; gap:18px; margin-top:18px; }
+.model { scroll-margin-top:20px; }
+.model-head { display:flex; gap:14px; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; }
+.model-head h3 { margin:0; font-size:1.45rem; }
+.model-sub { color:var(--muted); font-weight:700; }
+.tag-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.tag { display:inline-block; padding:7px 10px; border-radius:999px; background:#fff; border:1px solid var(--line); font-size:.86rem; font-weight:700; }
+.why { margin-top:14px; padding:15px 16px; background:#fff7ee; border:1px solid #ecd2be; border-radius:18px; }
+.why strong { color:var(--accent); }
+.mini-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:14px; }
+.mini {
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px;
+}
+.mini h4 { font-size:.95rem; margin-bottom:6px; color:var(--a3); }
+.diagram-wrap {
+  margin-top:14px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:linear-gradient(180deg,#fffdfa,#f7f1e8);
+}
+.diagram-title {
+  font-size:.95rem;
+  font-weight:800;
+  color:var(--a3);
+}
+.diagram-sub {
+  margin-top:6px;
+  color:var(--muted);
+  font-size:.94rem;
+}
+.diagram-flow {
+  margin-top:12px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  overflow-x:auto;
+  padding-bottom:4px;
+}
+.dsp-box {
+  min-width:120px;
+  padding:10px 12px;
+  border-radius:16px;
+  border:1px solid var(--line);
+  background:#fff;
+  font-weight:700;
+  text-align:center;
+  line-height:1.35;
+  flex:0 0 auto;
+}
+.dsp-box.core { background:#fff; }
+.dsp-box.gain { background:#fff1e8; border-color:#e8c3aa; }
+.dsp-box.voice { background:#ebf7f5; border-color:#a9d8d0; }
+.dsp-box.tone { background:#edf3ff; border-color:#b9c9f4; }
+.dsp-arrow {
+  color:var(--accent);
+  font-size:1.1rem;
+  font-weight:900;
+  flex:0 0 auto;
+}
+.diagram-note {
+  margin-top:12px;
+  padding:11px 12px;
+  border-radius:14px;
+  background:rgba(154,52,18,.06);
+  color:var(--ink);
+  font-size:.94rem;
+}
+.footer { margin:28px auto 42px; padding:22px; }
+.footer ol { margin-left:22px; margin-top:10px; }
+svg { width:100%; height:auto; }
+@media (max-width:1080px) {
+  .grid-4 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:920px) {
+  .grid-2,.grid-3,.grid-4,.mini-grid { grid-template-columns:1fr; }
+  .hero,.card,.compare,.flow,.table-wrap,.model,.footer { padding:18px; border-radius:20px; }
+  table { min-width:760px; }
+}
+</style>
+</head>
+<body>
+  <div class="wrap hero">
+    <span class="eyebrow">上級分冊 Amp 完全版</span>
+    <h1>ZOOM の AMP は 1 台ずつキャラクタを変えながら、同じ DSP の骨格を使い回しています。</h1>
+    <p class="lead">ここでは 16 種類の AMP モデルをすべて個別に解説します。単に「この amp は Marshall 系です」で終わらせず、なぜそのようなフィルタ構成や歪み段、追加パラメータが必要になるのかまで掘り下げます。DSP を書いたことがない人でも読み進められるように、共通の信号フローから個別機種まで順番に整理しています。</p>
+    <div class="nav">
+      <a href="advanced-zoom-dsp.html">上級ハブへ戻る</a>
+      <a href="comp-cab.html">Comp / Cab 編</a>
+      <a href="advanced-drive.html">Drive 編</a>
+      <a href="dsp-lab.html">体験ラボ</a>
+    </div>
+    <div class="summary">
+      <span class="pill">16 モデル網羅</span>
+      <span class="pill">共通実装 + 個別差分</span>
+      <span class="pill">実装理由を明示</span>
+      <span class="pill">iPad で読める縦長構成</span>
+    </div>
+  </div>
+
+  <section class="wrap">
+    <div class="kicker">Shared Architecture</div>
+    <h2 class="section-title">まず共通骨格を見ると、なぜ AMP ごとの差分が「追加パラメータ」と「係数テーブル」に集中するのかが見えます。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="flow">
+        <h3>AMP 共通フロー</h3>
+        <div class="eq">input -> pre filter -> gain dependent EQ -> 4x oversampling -> multi-stage clipping -> presence EQ -> tone stack -> level</div>
+        <p style="margin-top:10px;">実機アンプは真空管、トランス、受動回路が連鎖して音を作ります。ZOOM 側ではそれを、段ごとの IIR フィルタ、オーバーサンプリング、複数回のクリッピング、最後の tone stack へ分解して再構成しています。</p>
+        <div class="note">つまり、モデルごとの差は「骨格そのもの」より「どこを強く近似したいか」に現れます。</div>
+      </div>
+      <div class="compare">
+        <h3>なぜ 4x oversampling が要るのか</h3>
+        <p>アンプ系は nonlinear 処理が多く、歪ませた瞬間に高次倍音が大量に出ます。そのまま 48kHz で処理すると、ナイキストを超えた成分が折り返して alias になります。そこで 192kHz 相当まで持ち上げてから歪ませ、最後に落とし直します。</p>
+        <svg viewBox="0 0 680 220" aria-label="oversampling block diagram" style="margin-top:14px;">
+          <rect x="18" y="78" width="110" height="54" rx="14" fill="#fff" stroke="#d8cfbf"/>
+          <rect x="156" y="78" width="110" height="54" rx="14" fill="#fff" stroke="#d8cfbf"/>
+          <rect x="294" y="78" width="110" height="54" rx="14" fill="#fff" stroke="#d8cfbf"/>
+          <rect x="432" y="78" width="110" height="54" rx="14" fill="#fff" stroke="#d8cfbf"/>
+          <rect x="560" y="78" width="100" height="54" rx="14" fill="#fff" stroke="#d8cfbf"/>
+          <text x="73" y="111" text-anchor="middle" font-size="18" fill="#18212f">入力</text>
+          <text x="211" y="111" text-anchor="middle" font-size="18" fill="#18212f">Pre EQ</text>
+          <text x="349" y="111" text-anchor="middle" font-size="18" fill="#18212f">4x OVS</text>
+          <text x="487" y="111" text-anchor="middle" font-size="18" fill="#18212f">Clip</text>
+          <text x="610" y="111" text-anchor="middle" font-size="18" fill="#18212f">Tone</text>
+          <path d="M128 105 H156" stroke="#9a3412" stroke-width="4"/>
+          <path d="M266 105 H294" stroke="#9a3412" stroke-width="4"/>
+          <path d="M404 105 H432" stroke="#9a3412" stroke-width="4"/>
+          <path d="M542 105 H560" stroke="#9a3412" stroke-width="4"/>
+          <text x="349" y="55" text-anchor="middle" font-size="16" fill="#0f766e">192kHz 相当で歪ませる</text>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Why This Design</div>
+    <h2 class="section-title">「なぜそのような実装をするのか」の答えは、実アンプの違いを CPU 制約の中でどこまで残すかにあります。</h2>
+    <div class="grid-4" style="margin-top:18px;">
+      <div class="card">
+        <h3>Pre-EQ を先に置く理由</h3>
+        <p>歪みの前に低域を整理しないと、音がすぐ飽和して輪郭が崩れます。実機でも coupling capacitor や入力インピーダンスが低域量を決めるので、DSP 側でも先に HPF / pre-EQ を入れます。</p>
+      </div>
+      <div class="card">
+        <h3>クリップを複数段に分ける理由</h3>
+        <p>真空管段は一発で完全飽和するのではなく、数段にわたって徐々に圧縮されます。そこで hard clip を一回だけ置くより、段間に EQ を挟みながら複数回処理した方が feel が近づきます。</p>
+      </div>
+      <div class="card">
+        <h3>tone stack を後ろへ置く理由</h3>
+        <p>Fender / Marshall / Mesa は、歪み段の前後関係こそ違っても、最終的に聴こえる質感は tone stack の位置で大きく変わります。後段に置くと、同じ clipping でも「どの帯域を残すか」がモデル差として見せやすくなります。</p>
+      </div>
+      <div class="card">
+        <h3>追加パラメータが少数に限られる理由</h3>
+        <p>Deep、Mode、Structure のような固有ノブは、その機種らしさが大きく変わる場所だけを外に出したものです。全部を細かく可変にすると UI も DSP 係数管理も重くなるため、効く場所だけ残しています。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Quick Map</div>
+    <h2 class="section-title">16 モデルの全体像を先に掴む</h2>
+    <p class="intro">まずは、どの系列のアンプで、どこに DSP 上の複雑さがあるかを一覧で見ます。その後、各モデルの詳細へ進んでください。</p>
+    <div class="table-wrap" style="margin-top:18px;">
+      <table>
+        <thead>
+          <tr>
+            <th>モデル</th>
+            <th>元ネタ</th>
+            <th>音の方向</th>
+            <th>目立つパラメータ</th>
+            <th>実装の重心</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>BG MK1</td><td>Mesa Boogie Mark I</td><td>温かいクリーンから濃いドライブ</td><td>Gain / 3-band EQ</td><td>中域主導の多段 preamp</td></tr>
+          <tr><td>BG MK3</td><td>Mesa Boogie Mark III</td><td>Mark 系らしい押し出しと輪郭</td><td>Gain / Mid / Presence</td><td>Mark 系の中域設計を強めた pre-EQ</td></tr>
+          <tr><td>DZ DRV</td><td>Diezel Herbert Ch2</td><td>モダン高ゲイン、低域制御が強い</td><td>Deep / MidCut</td><td>独立した低域・中域 shaping</td></tr>
+          <tr><td>FD B-MAN</td><td>Fender '59 Bassman</td><td>Tweed の太さと自然な歪み</td><td>Hi/Lo input</td><td>シンプル段構成で vintage 感を維持</td></tr>
+          <tr><td>FD DLXR</td><td>Fender '65 Deluxe Reverb</td><td>明るいクリーン、コンボ感</td><td>Tremolo</td><td>クリーン主体 + 揺れの付加</td></tr>
+          <tr><td>FD MASTER</td><td>Fender Tone Master B</td><td>現代的 Fender、厚み可変</td><td>Fat</td><td>低域量を外部パラメータ化</td></tr>
+          <tr><td>FD TWNR</td><td>Fender '65 Twin Reverb</td><td>大きいヘッドルーム、鈴鳴り</td><td>Tremolo</td><td>クリーン headroom を崩さない設計</td></tr>
+          <tr><td>HW100</td><td>Hiwatt Custom 100</td><td>硬質で抜ける UK クリーン</td><td>Bright / Normal</td><td>入力差の再現が主役</td></tr>
+          <tr><td>MATCH30</td><td>Matchless DC-30</td><td>Class A のきらびやかさ</td><td>Tone2 / Cut</td><td>2 系統の色付けを整理</td></tr>
+          <tr><td>MS 1959</td><td>Marshall 1959 Super Lead</td><td>開放的な Plexi</td><td>2 input / Presence</td><td>複数入力と mid-forward tone</td></tr>
+          <tr><td>MS 45os</td><td>Marshall JTM45 Offset</td><td>古い Marshall の丸み</td><td>2 channel blend</td><td>vintage な緩い歪み曲線</td></tr>
+          <tr><td>MS 800</td><td>Marshall JCM800 2203</td><td>切れ味のある rock drive</td><td>Hi/Lo input</td><td>入力差 + gain 依存 EQ が重要</td></tr>
+          <tr><td>ORG120</td><td>Orange Graphic 120</td><td>厚い中域と荒々しさ</td><td>Color</td><td>色の切替を離散モード化</td></tr>
+          <tr><td>Recti ORG</td><td>Mesa Dual Rectifier Orange</td><td>重い低域と modern high gain</td><td>Mode</td><td>モード切替で係数群を変更</td></tr>
+          <tr><td>UK 30A</td><td>British Class A Combo</td><td>VOX 系のチャイム感</td><td>Cut / Tremolo</td><td>高域と power amp feel の調整</td></tr>
+          <tr><td>XtasyBlue</td><td>Bogner Ecstasy Blue</td><td>上品で分厚い high gain</td><td>Structure</td><td>離散的な歪み性格切替</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Model Navigator</div>
+    <h2 class="section-title">見たいアンプへすぐ飛ぶ</h2>
+    <div class="chips">
+      <a href="#bgmk1">BG MK1</a>
+      <a href="#bgmk3">BG MK3</a>
+      <a href="#dzdrv">DZ DRV</a>
+      <a href="#fdbman">FD B-MAN</a>
+      <a href="#fddlxr">FD DLXR</a>
+      <a href="#fdmaster">FD MASTER</a>
+      <a href="#fdtwnr">FD TWNR</a>
+      <a href="#hw100">HW100</a>
+      <a href="#match30">MATCH30</a>
+      <a href="#ms1959">MS 1959</a>
+      <a href="#ms45os">MS 45os</a>
+      <a href="#ms800">MS 800</a>
+      <a href="#org120">ORG120</a>
+      <a href="#rectiorg">Recti ORG</a>
+      <a href="#uk30a">UK 30A</a>
+      <a href="#xtasyblue">XtasyBlue</a>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">All Models</div>
+    <h2 class="section-title">AMP 全種類を 1 台ずつ読む</h2>
+    <div class="models">
+      <article class="model" id="bgmk1">
+        <div class="model-head">
+          <div>
+            <h3>BG MK1</h3>
+            <div class="model-sub">Mesa Boogie Mark I 系。クリーンから歌うような lead へ移る初期 Boogie の設計。</div>
+          </div>
+          <div class="tag-row"><span class="tag">US</span><span class="tag">Mark 系</span><span class="tag">中域重視</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>Fender 系クリーンを出発点にしつつ、前段を増やして sustain を得るタイプです。抜ける mid と singing lead が主題です。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>多段 preamp と中域の扱いが中心になります。単純な bright amp より、歪み前の周波数整形が重要です。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Mark I は mid を押し出す preamp の積み上げが主役です。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Mid-Focus<br>Pre-EQ</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Gain Stage 1</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Lead Gain Stage</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Mark Tone Stack</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: 最初の pre-EQ で歪ませる帯域を絞り、後段の lead gain で singing lead を作ります。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Mark I 系は「歪み量」より「どの mid を押し出すか」でキャラクタが決まります。そのため ZOOM 側でも単一クリッパーより、歪み前の EQ と段数配分に重心を置く方が実機らしさを出しやすくなります。</div>
+      </article>
+
+      <article class="model" id="bgmk3">
+        <div class="model-head">
+          <div>
+            <h3>BG MK3</h3>
+            <div class="model-sub">Mesa Boogie Mark III 系。Mark I より整理された gain 構造と濃い mid の押し出し。</div>
+          </div>
+          <div class="tag-row"><span class="tag">US</span><span class="tag">Lead 向け</span><span class="tag">Presence 重要</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>Mark I の荒削りさより、lead 用にまとまった gain と押し出しの強い中域が狙いです。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>gain と presence の両立が必要で、歪み段の後ろで高域感を整える処理が効きます。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Mark III は Mark I よりも輪郭整理が強く、presence が効く構成です。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Tight Pre-EQ</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Gain Stage 1</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Gain Stage 2</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Presence</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Mark Tone Stack</div>
+          </div>
+          <div class="diagram-note">要点: high gain 化でぼやけやすいので、後段の presence と tone stack でエッジを回収します。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Mark III は high gain でも音像が崩れにくいことが重要です。そこで preamp を増やすだけでなく、後段の presence や tone stack で輪郭を締める実装にする必要があります。</div>
+      </article>
+
+      <article class="model" id="dzdrv">
+        <div class="model-head">
+          <div>
+            <h3>DZ DRV</h3>
+            <div class="model-sub">Diezel Herbert Channel 2 系。現代的 high gain を、Deep と MidCut で形作るモデル。</div>
+          </div>
+          <div class="tag-row"><span class="tag">DE</span><span class="tag">Modern high gain</span><span class="tag">Deep / MidCut</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>低域が深く、中域の押し引きで metal 寄りにも rock 寄りにも寄せられる、輪郭の強い modern amp です。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>Deep と MidCut が gain と独立している点が最大の特徴です。tone stack だけでは作れないキャラクタを追加ノブで切り出しています。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Diezel 系は独立した低域と中域の shaping を先に持つのが特徴です。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Deep Control</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">MidCut</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Multi Gain</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Tone Stack</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: tone stack の前に Deep と MidCut を置くことで、歪みそのものの性格を変えられます。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Herbert 系は低域の量感と中域の整理が音作りの中心なので、Bass/Mid/Treble の後段だけでは再現しにくいです。そこで preamp の前後に独立シェイピングを入れて、歪み方そのものを変えられるようにしています。</div>
+      </article>
+
+      <article class="model" id="fdbman">
+        <div class="model-head">
+          <div>
+            <h3>FD B-MAN</h3>
+            <div class="model-sub">Fender '59 Bassman 系。tweed の太さと自然なコンプレッションを狙う vintage アンプ。</div>
+          </div>
+          <div class="tag-row"><span class="tag">US</span><span class="tag">Tweed</span><span class="tag">Hi / Lo input</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>粗すぎない歪み、柔らかい低域、歪ませても耳が痛くなりにくい古い Fender 系の質感です。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>段数は比較的少なめで、入力差と tone stack がキャラクタの多くを担います。modern high gain のような大掛かりな shaping は不要です。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Bassman はシンプルな回路を保ちつつ、入力差で反応を変える型です。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Hi / Lo Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Tweed Gain</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Simple Tone</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Soft High Cut</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: 余計な mode を増やさず、入力差と少数段の自然な歪みで tweed 感を残します。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Bassman の魅力は複雑な mode 切替ではなく、シンプルな回路が自然に歪むことです。DSP でも余計な補正を増やすより、少ない段数と素直な EQ で vintage feel を残す方が正解になります。</div>
+      </article>
+
+      <article class="model" id="fddlxr">
+        <div class="model-head">
+          <div>
+            <h3>FD DLXR</h3>
+            <div class="model-sub">Fender '65 Deluxe Reverb 系。アメリカンクリーンと小型コンボの反応の良さが主役。</div>
+          </div>
+          <div class="tag-row"><span class="tag">US</span><span class="tag">Clean combo</span><span class="tag">Tremolo</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>歪ませるための amp ではなく、明るく広がるクリーンと少しの edge を狙うモデルです。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>gain 依存 EQ はあるものの、主役は clean 側の明るさと tremolo の揺れです。歪み段は存在しても、high gain 用ほど aggressive ではありません。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Deluxe Reverb は clean を壊さずに tremolo と edge を足す構成です。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Clean Pre-EQ</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Light Gain</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Fender Tone</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Tremolo</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: 歪みを作るより、クリーンの明るさを保ったまま揺れと軽い edge を加えるのが目的です。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Deluxe Reverb は「強く歪ませたとき」より「普段のクリーンがどう聞こえるか」の方が重要です。だから clipping の派手さより、headroom と高域の鈴鳴りを残す設計が優先されます。</div>
+      </article>
+
+      <article class="model" id="fdmaster">
+        <div class="model-head">
+          <div>
+            <h3>FD MASTER</h3>
+            <div class="model-sub">Fender Tone Master B channel 系。古典 Fender より厚みを積極的に調整できる現代寄りモデル。</div>
+          </div>
+          <div class="tag-row"><span class="tag">US</span><span class="tag">Fat</span><span class="tag">Modern Fender</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>Fender らしい明るさを保ちながら、痩せすぎない body を与える音です。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>Fat パラメータが低域や低中域の量感を直接制御します。tone stack だけでは足りない厚みを前段または中段で追加していると読めます。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Tone Master 系は clean ベースのまま厚みだけを積み増す構成です。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Fat Boost</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Body Pre-EQ</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Light Saturation</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Fender Tone</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: Fat を独立させることで、tone stack を大きく崩さずに body だけを増やせます。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> 現代的な Fender 系は、クリーンの透明感と同時に「細すぎないこと」も要求されます。そこで低域量を専用パラメータで出せるようにすると、ギターや pickup による差を吸収しやすくなります。</div>
+      </article>
+
+      <article class="model" id="fdtwnr">
+        <div class="model-head">
+          <div>
+            <h3>FD TWNR</h3>
+            <div class="model-sub">Fender '65 Twin Reverb 系。大出力クリーンと広い headroom を感じさせる代表格。</div>
+          </div>
+          <div class="tag-row"><span class="tag">US</span><span class="tag">Headroom</span><span class="tag">Tremolo</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>大きく、明るく、潰れにくいクリーンです。drive よりも pedal platform としての性格が強いモデルです。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>歪み段を持っていても、その働きは控えめで、高域の透明感と奥行きを壊さない設計が重要です。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Twin Reverb は headroom を守りながら空間的な clean を作ります。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Wide Clean EQ</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Minimal Drive</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Bright Tone Stack</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Tremolo</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: minimal drive に抑えることで、pedal を前に入れても壊れにくい clean 台を保ちます。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Twin Reverb の本質は「歪まないこと」です。つまり DSP では、歪みを作るより、歪ませないまま高域と低域のバランスを保つ方が難しく、そのため clean headroom を優先した係数設計になります。</div>
+      </article>
+
+      <article class="model" id="hw100">
+        <div class="model-head">
+          <div>
+            <h3>HW100</h3>
+            <div class="model-sub">Hiwatt Custom 100 系。固くて速い反応、ブライトで輪郭の見える UK クリーン。</div>
+          </div>
+          <div class="tag-row"><span class="tag">UK</span><span class="tag">Bright / Normal</span><span class="tag">Hard attack</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>粘るより、すばやく立ち上がってエッジが見える sound です。クリーンでも rock の押し出しがあります。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>入力切替の意味が大きく、Hi/Lo あるいは Bright/Normal の違いを pre-filter で表現するのが効きます。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Hiwatt は入力特性の差が大きく、立ち上がりの硬さを先頭で決めます。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Bright / Normal</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Attack Pre-EQ</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Low Drive</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Hiwatt Tone</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: gain を増やすより、入力の bright / normal 差で硬さと抜けを作るのがこの amp の核心です。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Hiwatt 系は tone stack を大きく動かすより、入力と headroom のキャラで差が出ます。だから独立 mode 追加より、入力段の特性差を丁寧に再現する方がそれらしくなります。</div>
+      </article>
+
+      <article class="model" id="match30">
+        <div class="model-head">
+          <div>
+            <h3>MATCH30</h3>
+            <div class="model-sub">Matchless DC-30 系。Class A コンボのきらめきと、複数チャンネル感を持つモデル。</div>
+          </div>
+          <div class="tag-row"><span class="tag">US</span><span class="tag">Class A</span><span class="tag">Tone2 / Cut</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>VOX 由来のチャイム感を保ちつつ、少し厚い上質な倍音を狙います。クリーンと edge の境目が美味しいタイプです。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>Cut や 2 系統の tone 操作が出てくるので、単一 3-band EQ だけでは足りません。複数のキャラを整理するための係数テーブルが増えやすいモデルです。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Matchless は VOX 系の chime を、複数 voicing と cut で整理します。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Channel Voice</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Class A Gain</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Tone 2</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Cut Control</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: 後段の Cut が高域の刺さりだけを落とし、chime の本体は残す役割を担います。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Matchless 系は「どの帯域を歪ませるか」より「高域をどこまで残し、どこで丸めるか」が核心です。Cut のような後段制御を入れることで、Class A のきらびやかさを失わずに耳当たりを調整できます。</div>
+      </article>
+
+      <article class="model" id="ms1959">
+        <div class="model-head">
+          <div>
+            <h3>MS 1959</h3>
+            <div class="model-sub">Marshall 1959 Super Lead 系。Plexi の開放感と複数入力の使い分けが鍵。</div>
+          </div>
+          <div class="tag-row"><span class="tag">UK</span><span class="tag">Plexi</span><span class="tag">2 input</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>強い歪みというより、押し出しのある mid と空気感のある top end を両立した classic rock sound です。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>複数入力の差、presence、Marshall 系 tone stack の相互作用が重要です。mid の出方を保つため、tone stack の挙動がかなり効きます。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Plexi は入力差と presence を含む classic Marshall の流れで理解できます。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">2 Input Voice</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Plexi Gain</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Extra Push</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Presence</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Marshall Tone</div>
+          </div>
+          <div class="diagram-note">要点: 入力差で歪み方が動くので、固定 high gain よりも input voice の切替が重要です。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Plexi は extreme gain より、入力と volume の組み合わせで歪みが変わる amp です。そのため固定ハイゲイン回路を作るより、入力差と gain 依存 EQ を通して「押し込むほど歪む」動きを作る方が本質に近づきます。</div>
+      </article>
+
+      <article class="model" id="ms45os">
+        <div class="model-head">
+          <div>
+            <h3>MS 45os</h3>
+            <div class="model-sub">Marshall JTM45 Offset 系。Plexi 前夜の、丸く太い vintage Marshall。</div>
+          </div>
+          <div class="tag-row"><span class="tag">UK</span><span class="tag">Vintage Marshall</span><span class="tag">2 channel</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>後年の Marshall より柔らかく、低域が少し緩み、歪みが広がる方向の音です。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>硬い clipping より、前段の緩やかな周波数変化と複数 channel 由来の混ざり方が効くと考えられます。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">JTM45 は硬い clip より、緩い前段整形で雰囲気を作ります。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Channel Blend</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Soft Pre-EQ</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Gentle Gain</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Vintage Marshall Tone</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: soft pre-EQ と gentle gain で、後年 Marshall より丸い歪み方を保ちます。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> JTM45 は JCM800 のような切れ味より、曖昧さまで含めた気持ちよさが価値です。よって DSP でも aggressive な high cut や hard clip を増やしすぎず、やや緩い gain staging を選ぶ方が雰囲気を守れます。</div>
+      </article>
+
+      <article class="model" id="ms800">
+        <div class="model-head">
+          <div>
+            <h3>MS 800</h3>
+            <div class="model-sub">Marshall JCM800 2203 系。切れ味、入力差、gain 依存 EQ がはっきり見える代表モデル。</div>
+          </div>
+          <div class="tag-row"><span class="tag">UK</span><span class="tag">JCM800</span><span class="tag">詳細解析あり</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>80s rock の中心にある、硬く前へ飛ぶ歪みです。低域を締め、mid を押し出し、presence で抜けを作ります。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>Hi/Lo 入力差、gain 依存 pre-EQ、複数段 clipping が明確です。Marshall 系の tone stack を後段で持ち、全体の bite を調整します。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">JCM800 は「何を歪ませるか」を先に決めてから、多段で押し込む構成です。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Hi / Lo Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Gain-Dependent EQ</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Multi Clip</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Marshall Tone</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Presence</div>
+          </div>
+          <div class="diagram-note">要点: 低域を先に締めてから multi clip へ入れるので、歪んでも輪郭が保たれます。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> JCM800 は「何を歪ませるか」の設計が非常に大事で、低域をそのまま突っ込むとすぐ濁ります。だから pre-EQ で締めてから複数段へ送り、最後に Marshall tone stack で歪み後の輪郭を作る構成が理にかなっています。</div>
+      </article>
+
+      <article class="model" id="org120">
+        <div class="model-head">
+          <div>
+            <h3>ORG120</h3>
+            <div class="model-sub">Orange Graphic 120 系。厚い中域と、少し荒い押し出しを持つ Orange キャラクタ。</div>
+          </div>
+          <div class="tag-row"><span class="tag">UK</span><span class="tag">Color</span><span class="tag">Mid heavy</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>単に dark ではなく、ざらっとした質感と厚い中域で前へ出る音です。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>Color パラメータが tone stack とは別に性格を切り替えます。つまり連続 EQ だけでなく、離散的なキャラクタ切替が必要です。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Orange 系は Color で amp 全体の色味を切り替える発想です。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Color Mode</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Mid Push EQ</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Orange Gain</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Tone Stack</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: Color は単なる treble 量ではなく、mid の押し出しまで含んだ voicing 切替として働きます。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Orange 系はノブを少し動かしただけで amp 全体の印象が変わることがあります。その変化は単純な shelf EQ では表しにくいので、Color のようなモード化で一気に係数群を変える方が再現しやすくなります。</div>
+      </article>
+
+      <article class="model" id="rectiorg">
+        <div class="model-head">
+          <div>
+            <h3>Recti ORG</h3>
+            <div class="model-sub">Mesa Dual Rectifier Orange Channel 系。重い低域と modern metal / hard rock の大きな壁感。</div>
+          </div>
+          <div class="tag-row"><span class="tag">US</span><span class="tag">Mode</span><span class="tag">Modern Mesa</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>深い低域、強い saturation、しかし palm mute で崩れない締まりです。現代的な重さが主眼です。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>Mode で係数群を切り替え、低域整理と高域の harsh さ抑制を同時に行います。オーバーサンプリングの重要度も高いモデルです。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Rectifier は低域整理と激しい歪みを同時成立させる構成です。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Mode Switch</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Tight Low-Cut</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Heavy Gain</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Presence / Tone</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: heavy gain の前に tight low-cut を置くことで、深い低域を感じさせつつ濁りだけを減らします。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Rectifier 系は gain を増やすだけでは再現できません。低域を残しつつ濁りは消す必要があるので、段間 EQ と mode 切替で preamp の性格自体を差し替える実装が必要になります。</div>
+      </article>
+
+      <article class="model" id="uk30a">
+        <div class="model-head">
+          <div>
+            <h3>UK 30A</h3>
+            <div class="model-sub">Early British Class A Combo 系。VOX 的なチャイムと cut control を持つモデル。</div>
+          </div>
+          <div class="tag-row"><span class="tag">UK</span><span class="tag">Class A combo</span><span class="tag">Cut / Tremolo</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>高域がきらびやかで、軽く歪むとすぐ倍音が咲く、いわゆる chime の方向です。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>Cut の扱いと、高域が暴れすぎない control が重要です。presence とも違う、後段の高域整理が肝になります。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">British Class A combo は高域のきらめきと後段 cut の両立で作ります。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Chime Pre-EQ</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Edge Gain</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Tone Stack</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Cut</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Tremolo</div>
+          </div>
+          <div class="diagram-note">要点: chime を作る高域は前で持ち上げ、刺さりだけを後段の cut で落とします。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Class A combo 系は、強く歪ませたときよりも edge-of-breakup の美味しさが主題です。そのため高域の倍音管理が難しく、cut を専用制御にして power amp 的な feel を残す設計が効きます。</div>
+      </article>
+
+      <article class="model" id="xtasyblue">
+        <div class="model-head">
+          <div>
+            <h3>XtasyBlue</h3>
+            <div class="model-sub">Bogner Ecstasy Blue 系。上品な high gain を Structure で切り替える複雑系モデル。</div>
+          </div>
+          <div class="tag-row"><span class="tag">DE</span><span class="tag">Structure</span><span class="tag">Discrete voicing</span></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini"><h4>狙う音</h4><p>粗く潰すより、分厚いのに品がある歪みです。bright にしても耳に刺さりにくい洗練が狙われます。</p></div>
+          <div class="mini"><h4>見える実装要点</h4><p>Structure は連続ノブではなく、複数の voicing を飛び飛びに切り替えるパラメータです。フィルタセットをジャンプテーブル的に切り替える実装と相性が良いです。</p></div>
+        </div>
+        <div class="diagram-wrap">
+          <div class="diagram-title">DSP 処理図</div>
+          <div class="diagram-sub">Bogner 系は Structure ごとに別の voicing を選ぶ離散構成です。</div>
+          <div class="diagram-flow">
+            <div class="dsp-box core">Input</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Structure Select</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box voice">Voicing Filters</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box gain">Refined Gain</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box tone">Tone / Presence</div><div class="dsp-arrow">→</div>
+            <div class="dsp-box core">Output</div>
+          </div>
+          <div class="diagram-note">要点: Structure でフィルタ群ごと切り替えることで、上品な high gain の性格差を離散的に出せます。</div>
+        </div>
+        <div class="why"><strong>なぜこう実装するか:</strong> Bogner 系の魅力は微妙な倍音の出方なので、単純な gain 一発では足りません。しかし連続補間で全部を滑らかにすると、元のスイッチ的な性格が薄れます。そこで Structure を離散モードとして持ち、パターンごとに別の EQ / clip 組み合わせを選ぶ設計になります。</div>
+      </article>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Cross Reading</div>
+    <h2 class="section-title">機種ごとの差が見やすい比較軸</h2>
+    <div class="grid-3" style="margin-top:18px;">
+      <div class="card">
+        <h3>Vintage と Modern の境界</h3>
+        <p>FD B-MAN、MS 45os、MS 1959 は、入力差と tone stack の比重が大きい vintage 側です。DZ DRV、Recti ORG、XtasyBlue は、追加 voicing パラメータで歪みそのものを切り替える modern 側です。</p>
+      </div>
+      <div class="card">
+        <h3>Clean 主体か、歪み主体か</h3>
+        <p>FD DLXR、FD TWNR、HW100、UK 30A は clean や edge-of-breakup の気持ちよさが本体です。MS 800、Recti ORG、DZ DRV は「歪ませたときの輪郭」を維持することが中心課題です。</p>
+      </div>
+      <div class="card">
+        <h3>追加パラメータの意味</h3>
+        <p>Deep、Fat、Color、Mode、Structure は、単なる EQ ノブではなく「その amp らしさが変わる場所」を抜き出したものです。つまり UI の都合ではなく、モデリング上の優先順位です。</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap footer">
+    <h2>次の読み方</h2>
+    <ol>
+      <li><a href="comp-cab.html">comp-cab.html</a> を続けて読むと、AMP 単体ではなく cabinet まで含めた最終音の作り方がつながります。</li>
+      <li><a href="dsp-lab.html">dsp-lab.html</a> で drive、compressor、cab の変化を触ると、ここで説明した pre-EQ と後段 shaping の意味が体感しやすくなります。</li>
+      <li><a href="index.html">index.html</a> に戻って各 AMP の DSP% と見比べると、どのモデルがどこに計算資源を使っているか推測しやすくなります。</li>
+    </ol>
+  </div>
+</body>
+</html>

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comp と Cabinet で理解する DSP | ZOOM 中級編</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f4f1e8;
+  --paper: #fffdfa;
+  --ink: #18202c;
+  --muted: #596273;
+  --line: #d8d1c4;
+  --accent: #bf360c;
+  --accent2: #0f766e;
+  --accent3: #1d4ed8;
+  --soft1: #ffe5d9;
+  --soft2: #ddf4ef;
+  --soft3: #e4edff;
+  --radius: 24px;
+  --shadow: 0 18px 48px rgba(24, 32, 44, 0.08);
+  --max: 1180px;
+}
+body {
+  font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+  color: var(--ink);
+  line-height: 1.8;
+  background:
+    radial-gradient(circle at top left, rgba(191, 54, 12, 0.12), transparent 26%),
+    radial-gradient(circle at top right, rgba(29, 78, 216, 0.1), transparent 24%),
+    linear-gradient(180deg, #f5f1e8 0%, #efe8db 100%);
+}
+a { color: var(--accent3); }
+.wrap { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+.hero { padding: 36px 0 24px; }
+.hero-card,
+.card,
+.panel,
+.footer-card {
+  background: rgba(255, 253, 250, 0.92);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.hero-card { overflow: hidden; }
+.hero-main {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 24px;
+  padding: 32px;
+}
+.eyebrow {
+  display: inline-block;
+  background: var(--soft1);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+h1 {
+  margin-top: 14px;
+  font-size: clamp(2rem, 4.4vw, 4rem);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+}
+.lead { margin-top: 16px; color: var(--muted); font-size: 1.08rem; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 46px; padding: 0 18px; border-radius: 999px;
+  text-decoration: none; font-weight: 700; border: 1px solid transparent;
+}
+.btn.primary { background: var(--ink); color: #fff; }
+.btn.secondary { background: #fff; border-color: var(--line); color: var(--ink); }
+.hero-side {
+  background: linear-gradient(180deg, #161d28, #111723);
+  border-radius: 24px;
+  padding: 20px;
+  color: #eef4ff;
+}
+.hero-side h2 { font-size: 1rem; color: #ffb8a2; margin-bottom: 12px; }
+.hero-side p { color: #c6d0dd; font-size: 0.95rem; }
+.key-grid { display: grid; gap: 10px; margin-top: 14px; }
+.key {
+  border-radius: 16px; padding: 12px; background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.key strong { display: block; color: #fff; font-size: 0.92rem; }
+.hero-bottom {
+  border-top: 1px solid var(--line);
+  padding: 18px 32px;
+  background: rgba(244, 237, 225, 0.78);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.hero-bottom div strong { display: block; color: var(--accent); font-size: 1.5rem; }
+.hero-bottom div span { color: var(--muted); font-size: 0.92rem; }
+section { padding: 26px 0; }
+.section-kicker {
+  color: var(--accent);
+  text-transform: uppercase;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.section-title {
+  margin-top: 8px;
+  font-size: clamp(1.55rem, 3vw, 2.5rem);
+  line-height: 1.14;
+}
+.section-intro { margin-top: 10px; color: var(--muted); max-width: 74ch; }
+.grid-2,
+.grid-3 { display: grid; gap: 18px; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card,
+.panel,
+.footer-card { padding: 22px; }
+.card h3,
+.panel h3 { margin-bottom: 10px; font-size: 1.12rem; }
+.pill-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.pill {
+  border-radius: 999px; padding: 8px 12px; border: 1px solid var(--line);
+  background: #f4efe5; font-size: 0.9rem;
+}
+.eq {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #161d28;
+  color: #edf4ff;
+  font-family: Consolas, Monaco, monospace;
+  overflow-x: auto;
+}
+.mini { margin-top: 10px; color: var(--muted); font-size: 0.92rem; }
+.flow { display: grid; gap: 14px; margin-top: 14px; }
+.flow-step {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.num {
+  width: 48px; height: 48px; border-radius: 16px; background: var(--ink);
+  color: #fff; display: grid; place-items: center; font-weight: 700;
+}
+.diagram-box {
+  padding: 18px; border-radius: 22px; border: 1px solid var(--line);
+  background: linear-gradient(180deg, #fffefb, #f4eee2);
+}
+.compare {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+table { width: 100%; border-collapse: collapse; min-width: 720px; }
+th, td {
+  padding: 13px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line);
+}
+th { color: var(--accent3); font-size: 0.88rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.callout {
+  margin-top: 16px; padding: 14px 16px; border-radius: 18px;
+  background: rgba(15, 118, 110, 0.08); border-left: 4px solid var(--accent2);
+}
+.footer { padding: 24px 0 48px; }
+.footer-card { background: #171d28; color: #eef4ff; }
+.footer-card p,
+.footer-card li { color: #cad3df; }
+.footer-card ol { margin-left: 20px; margin-top: 12px; }
+svg { width: 100%; height: auto; }
+@media (max-width: 960px) {
+  .hero-main,
+  .hero-bottom,
+  .grid-2,
+  .grid-3 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap hero-card">
+      <div class="hero-main">
+        <div>
+          <span class="eyebrow">ZOOM DSP 中級編</span>
+          <h1>Comp と Cabinet を題材にすると、アルゴリズムの読み方が具体的になります。</h1>
+          <p class="lead">begin.html で押さえた sample, filter, delay の基礎を、今度は 2 つの典型的な effect に当てはめます。Comp は「時間変化する gain control」、Cabinet は「周波数特性を持った箱とマイクの再現」と見ると整理しやすいです。</p>
+          <div class="actions">
+            <a class="btn primary" href="index.html">解析一覧へ戻る</a>
+            <a class="btn secondary" href="begin.html">入門ページへ戻る</a>
+            <a class="btn secondary" href="advanced-zoom-dsp.html">上級編へ進む</a>
+            <a class="btn secondary" href="advanced-amp.html">Amp 分冊</a>
+            <a class="btn secondary" href="advanced-drive.html">Drive 分冊</a>
+            <a class="btn secondary" href="dsp-lab.html">体験ラボで聴く</a>
+          </div>
+        </div>
+        <aside class="hero-side">
+          <h2>このページで掴むこと</h2>
+          <p>Comp は「音量を固定する機械」ではなく、入力の変化を見て時間的に gain を変える DSP です。Cabinet は「ただの EQ」より少し広く、speaker と mic の癖をまとめた応答として考えると見やすくなります。</p>
+          <div class="key-grid">
+            <div class="key"><strong>Comp</strong><span>envelope, attack, release, makeup gain</span></div>
+            <div class="key"><strong>Cabinet</strong><span>impulse response, FIR 的処理, mic coloration</span></div>
+            <div class="key"><strong>Reading docs</strong><span>coefficients と table の意味が見えてくる</span></div>
+          </div>
+        </aside>
+      </div>
+      <div class="hero-bottom">
+        <div><strong>Comp</strong><span>音量を直接いじるのでなく、検出した包絡に応じて gain を変える</span></div>
+        <div><strong>Cab</strong><span>speaker box と mic placement の癖を応答として持つ</span></div>
+        <div><strong>Zoom docs</strong><span>係数表や DSP load が「何に効いているか」を推測しやすくなる</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="wrap">
+      <div class="section-kicker">Compressor</div>
+      <h2 class="section-title">Comp は「入力を観察して、あとから通す量を決める」effect です。</h2>
+      <p class="section-intro">リポジトリ内の解析メモでは、COMP 系は envelope detect → gain compute → VCA → tone filter → makeup gain という流れに整理されていました。これは初心者にもかなり説明しやすい構造です。</p>
+      <div class="grid-2">
+        <div class="diagram-box">
+          <svg viewBox="0 0 760 250" aria-label="compressor の信号フロー">
+            <defs>
+              <marker id="arrowc" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+                <path d="M0,0 L0,8 L8,4 z" fill="#18202c"/>
+              </marker>
+            </defs>
+            <rect x="30" y="82" width="110" height="54" rx="18" fill="#ffe5d9" stroke="#e2b7a3"/>
+            <rect x="186" y="82" width="126" height="54" rx="18" fill="#ddf4ef" stroke="#abd9d2"/>
+            <rect x="356" y="82" width="114" height="54" rx="18" fill="#e4edff" stroke="#bbcaf0"/>
+            <rect x="514" y="82" width="108" height="54" rx="18" fill="#ffe5d9" stroke="#e2b7a3"/>
+            <rect x="650" y="82" width="80" height="54" rx="18" fill="#ddf4ef" stroke="#abd9d2"/>
+            <text x="85" y="115" text-anchor="middle" fill="#18202c" font-size="18" font-weight="700">入力</text>
+            <text x="249" y="115" text-anchor="middle" fill="#18202c" font-size="18" font-weight="700">Envelope</text>
+            <text x="413" y="115" text-anchor="middle" fill="#18202c" font-size="18" font-weight="700">Gain</text>
+            <text x="568" y="115" text-anchor="middle" fill="#18202c" font-size="18" font-weight="700">Tone</text>
+            <text x="690" y="115" text-anchor="middle" fill="#18202c" font-size="18" font-weight="700">出力</text>
+            <path d="M140 109 H178 M312 109 H348 M470 109 H506 M622 109 H642" stroke="#18202c" stroke-width="3" marker-end="url(#arrowc)"/>
+            <path d="M249 82 C249 42, 414 42, 414 74" fill="none" stroke="#0f766e" stroke-width="3" stroke-dasharray="7 6" marker-end="url(#arrowc)"/>
+            <text x="340" y="36" text-anchor="middle" fill="#596273" font-size="14">入力の大きさを見て gain を決める</text>
+          </svg>
+          <p class="mini">Comp は「大きい音を見つけてすぐ削る」だけではなく、attack と release によって反応速度を整えています。</p>
+        </div>
+        <article class="card">
+          <h3>Comp を分解するとこう見える</h3>
+          <div class="flow">
+            <div class="flow-step"><div class="num">1</div><div><strong>Envelope detect</strong><p>波形そのものではなく、音量の包絡を取り出します。ピック直後の立ち上がりや、減衰していく様子を見る工程です。</p></div></div>
+            <div class="flow-step"><div class="num">2</div><div><strong>Gain compute</strong><p>包絡が threshold より大きいならどれくらい下げるか、小さいならそのままか、という gain を決めます。</p></div></div>
+            <div class="flow-step"><div class="num">3</div><div><strong>Tone / makeup</strong><p>圧縮すると音が暗く感じたり小さく聞こえたりするので、最後に tone と makeup gain を加えることが多いです。</p></div></div>
+          </div>
+          <div class="pill-row">
+            <span class="pill">Attack = 反応の速さ</span>
+            <span class="pill">Release = 戻る速さ</span>
+            <span class="pill">Sense = どれくらい敏感か</span>
+            <span class="pill">Level = 最終出力</span>
+          </div>
+        </article>
+      </div>
+      <div class="grid-2" style="margin-top:18px;">
+        <article class="card">
+          <h3>サンプル単位の直感</h3>
+          <div class="eq">env[n]  = smooth(abs(x[n]))
+gain[n] = rule(env[n])
+y[n]    = x[n] * gain[n]</div>
+          <p class="mini">実際には attack / release を分けたり、tone filter や table lookup を入れたりしますが、入り口はこの理解で足ります。</p>
+        </article>
+        <article class="card">
+          <h3>解析メモとどう結びつくか</h3>
+          <p>zoom-ms50gplus.md には、Comp 系で sensitivity table、auto-level table、tone table、attack table があることが書かれていました。つまり pedal は、つまみ位置ごとに係数を計算し直し、その係数で毎サンプル処理を回していると読めます。</p>
+          <div class="callout">Comp のドキュメントで coefficient table が出てきたら、「検出の速さ」「圧縮量」「補正 EQ」のどれに効いていそうかをまず考えると、読む速度が上がります。</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <div class="section-kicker">Cabinet</div>
+      <h2 class="section-title">Cabinet は「speaker + box + mic の色」を、応答として押し込んだものだと見ると分かりやすいです。</h2>
+      <p class="section-intro">初心者は cabinet をただの EQ と思いがちですが、感覚としてはそれで半分正解、半分不足です。speaker の周波数特性、箱鳴り、mic の位置や種類の色付けがまとめて効くので、IR や FIR 的な見方が有効です。</p>
+      <div class="grid-2">
+        <div class="diagram-box">
+          <svg viewBox="0 0 760 280" aria-label="cabinet convolution の図">
+            <defs>
+              <marker id="arrowcab" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+                <path d="M0,0 L0,8 L8,4 z" fill="#18202c"/>
+              </marker>
+            </defs>
+            <rect x="34" y="48" width="130" height="170" rx="22" fill="#fff" stroke="#d8d1c4"/>
+            <rect x="316" y="48" width="130" height="170" rx="22" fill="#fff" stroke="#d8d1c4"/>
+            <rect x="594" y="48" width="130" height="170" rx="22" fill="#fff" stroke="#d8d1c4"/>
+            <text x="99" y="80" text-anchor="middle" fill="#18202c" font-size="20" font-weight="700">Dry Input</text>
+            <text x="381" y="80" text-anchor="middle" fill="#18202c" font-size="20" font-weight="700">Cab IR</text>
+            <text x="659" y="80" text-anchor="middle" fill="#18202c" font-size="20" font-weight="700">Cab Tone</text>
+            <path d="M60 170 C74 126, 88 126, 101 170 S128 214, 142 170" fill="none" stroke="#bf360c" stroke-width="5"/>
+            <path d="M342 166 L350 157 L358 168 L366 141 L374 174 L382 149 L390 181 L398 155 L406 187 L414 160" fill="none" stroke="#1d4ed8" stroke-width="5" stroke-linecap="round"/>
+            <path d="M620 174 C634 162, 648 126, 661 102 S688 148, 702 136" fill="none" stroke="#0f766e" stroke-width="5"/>
+            <path d="M166 133 H306 M448 133 H584" stroke="#18202c" stroke-width="3" marker-end="url(#arrowcab)"/>
+            <text x="236" y="118" text-anchor="middle" fill="#596273" font-size="14">convolution</text>
+            <text x="44" y="236" fill="#596273" font-size="14">amp から出た元の信号</text>
+            <text x="316" y="236" fill="#596273" font-size="14">speaker と mic の癖</text>
+            <text x="594" y="236" fill="#596273" font-size="14">cab を通った感じの音</text>
+          </svg>
+          <p class="mini">箱の中で何が起きるかを逐一シミュレーションする代わりに、結果だけを IR として持つ、という見方です。</p>
+        </div>
+        <article class="card">
+          <h3>Cabinet が効くポイント</h3>
+          <div class="flow">
+            <div class="flow-step"><div class="num">1</div><div><strong>高域の落ち方</strong><p>guitar speaker はフルレンジではないので、歪みの耳に痛い高域をかなり整理します。</p></div></div>
+            <div class="flow-step"><div class="num">2</div><div><strong>中域のキャラクタ</strong><p>どの帯域が前に出るかで cabinet らしさが変わります。</p></div></div>
+            <div class="flow-step"><div class="num">3</div><div><strong>mic の色</strong><p>on-axis か off-axis か、近いか遠いかでかなり変わるので、IR には mic の印象も含まれます。</p></div></div>
+          </div>
+          <div class="pill-row">
+            <span class="pill">4x12 は低域と押し出し感</span>
+            <span class="pill">1x12 はまとまりやすい</span>
+            <span class="pill">off-axis は高域が穏やか</span>
+          </div>
+        </article>
+      </div>
+      <div class="grid-2" style="margin-top:18px;">
+        <article class="card">
+          <h3>コードの感覚で見る cabinet</h3>
+          <div class="eq">y[n] = h[0]x[n] + h[1]x[n-1] + h[2]x[n-2] + ...</div>
+          <p class="mini">h[k] が impulse response の係数です。過去の入力に重みを掛けて足すので、FIR フィルタの形で理解できます。</p>
+        </article>
+        <article class="card">
+          <h3>なぜ amp のあとに cab が欲しいのか</h3>
+          <p>amp sim や distortion は高域に強い成分を大量に作ります。そのままだとジャリジャリで不自然でも、cab sim を通すと「speaker を鳴らした後の現実的な音」に寄ります。だから amp と cab はセットで語られやすいです。</p>
+          <div class="callout">cab の処理は、drive の「歪みを作る工程」ではなく、その後段の「鳴り方を整える工程」と考えると役割分担が見えます。</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <div class="section-kicker">Reading The Docs</div>
+      <h2 class="section-title">解析ページでは、どこを見れば Comp と Cabinet の本質に触れられるか。</h2>
+      <div class="compare card">
+        <table>
+          <thead>
+            <tr>
+              <th>見る場所</th>
+              <th>Comp での読み方</th>
+              <th>Cabinet での読み方</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>parameter 名</td>
+              <td>Sense, Attack, Level なら envelope と gain 制御を疑う</td>
+              <td>Mic, Distance, HiCut なら応答の形を変えていると考える</td>
+            </tr>
+            <tr>
+              <td>coefficient table</td>
+              <td>反応速度や tone 補正の候補値</td>
+              <td>FIR / EQ 的な周波数 shaping の重み</td>
+            </tr>
+            <tr>
+              <td>DSP load</td>
+              <td>検出器や複数 filter が増えるほど重くなる</td>
+              <td>IR 長や内部補間が増えるほど重くなりやすい</td>
+            </tr>
+            <tr>
+              <td>signal flow 記述</td>
+              <td>envelope detector の有無を探す</td>
+              <td>IR, FIR, cab sim, mic sim 相当の記述を探す</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="wrap footer">
+      <div class="footer-card">
+        <h2>次の読み進め方</h2>
+        <p>ここまで来ると、解析ページに出てくる coefficient, filter, table, DSP load がただの数字ではなくなります。次は実際に effect ごとのページで、どのパラメータがどの工程に効いているかを追う段階です。</p>
+        <ol>
+          <li>index.html で Comp 系を開き、Sense, Attack, Level と coefficient table の対応を眺める。</li>
+          <li>Cabinet 系を開き、speaker / mic 的な色付けを FIR / IR の視点で読む。</li>
+          <li>そのあと Delay や Reverb に戻ると、buffer と network の話がさらに自然に読めます。</li>
+        </ol>
+        <p style="margin-top:16px;"><a href="advanced-zoom-dsp.html" style="color:#9bd1ff;">構造とパッケージまで読む上級編へ</a> / <a href="dsp-lab.html" style="color:#9bd1ff;">DSP 体験ラボで耳で確認する</a></p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

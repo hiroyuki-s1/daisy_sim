@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 380" font-family="'Segoe UI', Arial, sans-serif" font-size="13">
+  <defs>
+    <marker id="qx" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10" fill="#666"/></marker>
+    <marker id="qy" viewBox="0 0 10 10" refX="5" refY="0" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,10 L5,0 L10,10" fill="#666"/></marker>
+  </defs>
+
+  <rect width="620" height="380" rx="12" fill="#1a1a2e"/>
+  <text x="310" y="28" text-anchor="middle" fill="#ccc" font-weight="bold" font-size="16">品質 vs DSP負荷</text>
+
+  <g transform="translate(70,50)">
+    <!-- Y axis -->
+    <line x1="50" y1="280" x2="50" y2="20" stroke="#666" stroke-width="1.5" marker-end="url(#qy)"/>
+    <text x="20" y="15" fill="#888" font-size="12">品質</text>
+    <text x="20" y="28" fill="#888" font-size="10">(ボディ再現度)</text>
+
+    <!-- Y labels -->
+    <text x="45" y="265" fill="#666" font-size="11" text-anchor="end">×</text>
+    <text x="45" y="215" fill="#666" font-size="11" text-anchor="end">△</text>
+    <text x="45" y="155" fill="#666" font-size="11" text-anchor="end">○</text>
+    <text x="45" y="75" fill="#666" font-size="11" text-anchor="end">◎</text>
+    <line x1="47" y1="262" x2="53" y2="262" stroke="#666"/>
+    <line x1="47" y1="212" x2="53" y2="212" stroke="#666"/>
+    <line x1="47" y1="152" x2="53" y2="152" stroke="#666"/>
+    <line x1="47" y1="72" x2="53" y2="72" stroke="#666"/>
+
+    <!-- X axis -->
+    <line x1="50" y1="280" x2="490" y2="280" stroke="#666" stroke-width="1.5" marker-end="url(#qx)"/>
+    <text x="490" y="300" fill="#888" font-size="12" text-anchor="end">DSP負荷</text>
+
+    <!-- X labels -->
+    <text x="50" y="300" fill="#666" font-size="10" text-anchor="middle">0%</text>
+    <text x="120" y="300" fill="#666" font-size="10" text-anchor="middle">5%</text>
+    <text x="200" y="300" fill="#666" font-size="10" text-anchor="middle">10%</text>
+    <text x="275" y="300" fill="#666" font-size="10" text-anchor="middle">15%</text>
+    <text x="370" y="300" fill="#666" font-size="10" text-anchor="middle">25%</text>
+    <text x="460" y="300" fill="#666" font-size="10" text-anchor="middle">35%</text>
+
+    <!-- Grid lines -->
+    <line x1="120" y1="280" x2="120" y2="30" stroke="#333" stroke-width="0.5" stroke-dasharray="3,3"/>
+    <line x1="200" y1="280" x2="200" y2="30" stroke="#333" stroke-width="0.5" stroke-dasharray="3,3"/>
+    <line x1="275" y1="280" x2="275" y2="30" stroke="#333" stroke-width="0.5" stroke-dasharray="3,3"/>
+    <line x1="370" y1="280" x2="370" y2="30" stroke="#333" stroke-width="0.5" stroke-dasharray="3,3"/>
+
+    <!-- Trend curve -->
+    <path d="M60,270 Q120,215 200,185 Q300,135 370,85 Q420,58 460,50" fill="none" stroke="#444" stroke-width="1.5" stroke-dasharray="6,4"/>
+
+    <!-- Bypass point -->
+    <circle cx="60" cy="268" r="10" fill="#666" stroke="#aaa" stroke-width="2"/>
+    <text x="60" y="272" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">×</text>
+    <text x="75" y="262" fill="#aaa" font-size="11">バイパス</text>
+
+    <!-- ZOOM point -->
+    <circle cx="190" cy="220" r="12" fill="#e94560" stroke="#ff6b81" stroke-width="2"/>
+    <text x="190" y="224" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">Z</text>
+    <rect x="115" y="226" width="80" height="20" rx="4" fill="#e94560" opacity="0.2"/>
+    <text x="155" y="240" text-anchor="middle" fill="#e94560" font-size="11" font-weight="bold">ZOOM現行</text>
+    <text x="155" y="255" text-anchor="middle" fill="#888" font-size="9">~13% / 歪み感あり</text>
+
+    <!-- Ume point -->
+    <circle cx="120" cy="195" r="12" fill="#2ecc71" stroke="#55efc4" stroke-width="2"/>
+    <text x="120" y="199" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">梅</text>
+    <text x="142" y="190" fill="#2ecc71" font-size="11" font-weight="bold">梅</text>
+    <text x="142" y="203" fill="#888" font-size="9">~5% / クリーン</text>
+
+    <!-- Take point -->
+    <circle cx="300" cy="130" r="14" fill="#4a9eff" stroke="#74b9ff" stroke-width="2"/>
+    <text x="300" y="134" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">竹</text>
+    <text x="325" y="125" fill="#4a9eff" font-size="11" font-weight="bold">竹</text>
+    <text x="325" y="138" fill="#888" font-size="9">~15-20% / アコギっぽい</text>
+
+    <!-- Matsu point -->
+    <circle cx="430" cy="60" r="16" fill="#ff9e64" stroke="#ffc048" stroke-width="2.5"/>
+    <text x="430" y="65" text-anchor="middle" fill="#000" font-size="11" font-weight="bold">松</text>
+    <text x="400" y="48" fill="#ff9e64" font-size="11" font-weight="bold">松</text>
+    <text x="400" y="38" fill="#888" font-size="9">~25-35%</text>
+
+    <!-- Annotations -->
+    <text x="60" y="310" fill="#2ecc71" font-size="10">← 軽い (併用しやすい)</text>
+    <text x="460" y="310" fill="#ff9e64" font-size="10" text-anchor="end">重い (単体向き) →</text>
+
+    <!-- Quality annotations on right side -->
+    <text x="492" y="62" fill="#ff9e64" font-size="10">ブラインドテストで</text>
+    <text x="492" y="75" fill="#ff9e64" font-size="10">迷うレベル</text>
+    <text x="492" y="140" fill="#4a9eff" font-size="10">お、アコギっぽい</text>
+    <text x="492" y="205" fill="#888" font-size="10">まだエレキっぽい</text>
+    <text x="492" y="235" fill="#888" font-size="10">歪んでる…</text>
+  </g>
+</svg>

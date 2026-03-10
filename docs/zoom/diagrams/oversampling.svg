@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 650 300" font-family="'Segoe UI', Arial, sans-serif" font-size="13">
+  <rect width="650" height="300" rx="12" fill="#1a1a2e"/>
+  <text x="325" y="28" text-anchor="middle" fill="#ff9e64" font-weight="bold" font-size="15">オーバーサンプリング — なぜ4xに上げるのか</text>
+
+  <!-- Normal sampling -->
+  <g transform="translate(20,50)">
+    <rect width="290" height="100" rx="8" fill="#222" stroke="#4a9eff" stroke-width="1"/>
+    <text x="145" y="22" text-anchor="middle" fill="#4a9eff" font-weight="bold" font-size="13">通常 (48kHz)</text>
+    <text x="15" y="45" fill="#ccc" font-size="11">1秒間に48000回サンプリング</text>
+    <text x="15" y="65" fill="#ccc" font-size="11">表現できる最高周波数:</text>
+    <text x="15" y="85" fill="#4a9eff" font-size="13" font-weight="bold">48000 / 2 = 24kHz</text>
+    <text x="200" y="85" fill="#888" font-size="10">(可聴範囲をカバー)</text>
+  </g>
+
+  <!-- 4x oversampling -->
+  <g transform="translate(330,50)">
+    <rect width="300" height="100" rx="8" fill="#222" stroke="#2ecc71" stroke-width="1"/>
+    <text x="150" y="22" text-anchor="middle" fill="#2ecc71" font-weight="bold" font-size="13">4x オーバーサンプリング (192kHz)</text>
+    <text x="15" y="45" fill="#ccc" font-size="11">処理中だけ4倍に上げる</text>
+    <text x="15" y="65" fill="#ccc" font-size="11">表現できる最高周波数:</text>
+    <text x="15" y="85" fill="#2ecc71" font-size="13" font-weight="bold">192000 / 2 = 96kHz</text>
+    <text x="215" y="85" fill="#888" font-size="10">(余裕たっぷり)</text>
+  </g>
+
+  <!-- Why needed - aliasing explanation -->
+  <g transform="translate(20,170)">
+    <rect width="610" height="115" rx="8" fill="#2a1a1a" stroke="#e94560" stroke-width="1"/>
+    <text x="15" y="22" fill="#e94560" font-weight="bold" font-size="13">なぜ必要？ — 折り返しノイズ (エイリアシング)</text>
+
+    <!-- Flow diagram -->
+    <rect x="15" y="35" width="120" height="35" rx="6" fill="#e94560" opacity="0.2" stroke="#e94560"/>
+    <text x="75" y="57" text-anchor="middle" fill="#e94560" font-size="11">歪み処理</text>
+
+    <text x="148" y="57" fill="#888" font-size="14">→</text>
+
+    <rect x="162" y="35" width="140" height="35" rx="6" fill="#ff9e64" opacity="0.2" stroke="#ff9e64"/>
+    <text x="232" y="52" text-anchor="middle" fill="#ff9e64" font-size="10">元になかった高い倍音</text>
+    <text x="232" y="65" text-anchor="middle" fill="#ff9e64" font-size="10">が発生</text>
+
+    <text x="315" y="57" fill="#888" font-size="14">→</text>
+
+    <rect x="330" y="35" width="135" height="35" rx="6" fill="#e94560" opacity="0.3" stroke="#e94560"/>
+    <text x="397" y="52" text-anchor="middle" fill="#e94560" font-size="10">24kHz超の成分が</text>
+    <text x="397" y="65" text-anchor="middle" fill="#e94560" font-size="10">折り返してノイズに</text>
+
+    <text x="478" y="57" fill="#888" font-size="14">→</text>
+
+    <rect x="492" y="35" width="105" height="35" rx="6" fill="#2ecc71" opacity="0.2" stroke="#2ecc71"/>
+    <text x="544" y="52" text-anchor="middle" fill="#2ecc71" font-size="10">4xなら96kHz</text>
+    <text x="544" y="65" text-anchor="middle" fill="#2ecc71" font-size="10">まで安全!</text>
+
+    <!-- ZOOM note -->
+    <rect x="15" y="80" width="580" height="25" rx="4" fill="#333"/>
+    <text x="25" y="97" fill="#ff9e64" font-size="11" font-weight="bold">ZOOM AcSim の4x OVS:</text>
+    <text x="210" y="97" fill="#888" font-size="11">アコシミュのためではなく、内部のクリッピング(歪み)処理のため → ドライブ流用の証拠</text>
+  </g>
+</svg>

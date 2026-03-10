@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基礎2 フィルタと周波数応答 | ZOOM DSP コース</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --bg:#f3efe7; --paper:#fffdfa; --ink:#1b2230; --muted:#5d6676; --line:#d6d0c2; --accent:#9a3412; --a2:#0f766e; --a3:#1d4ed8; --shadow:0 16px 40px rgba(27,34,48,.08); }
+body { font-family:"Yu Gothic UI","Meiryo",sans-serif; background:linear-gradient(180deg,#f4f0e8,#ece4d6); color:var(--ink); line-height:1.8; }
+.wrap { width:min(1160px,calc(100% - 32px)); margin:0 auto; }
+.hero,.card,.footer { background:rgba(255,253,250,.94); border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow); }
+.hero { margin:28px auto 20px; padding:28px; }
+.eyebrow { display:inline-block; padding:8px 14px; border-radius:999px; background:#fce9df; color:var(--accent); font-size:.88rem; font-weight:700; }
+h1 { margin-top:14px; font-size:clamp(2rem,4vw,3.6rem); line-height:1.05; }
+.lead { margin-top:16px; color:var(--muted); }
+.nav { display:flex; gap:12px; flex-wrap:wrap; margin-top:18px; }
+.nav a { text-decoration:none; color:var(--ink); border:1px solid var(--line); padding:10px 16px; border-radius:999px; background:#fff; font-weight:700; }
+section { padding:16px 0; }
+.kicker { color:var(--accent); text-transform:uppercase; letter-spacing:.08em; font-size:.86rem; font-weight:700; }
+.section-title { margin-top:8px; font-size:clamp(1.45rem,3vw,2.3rem); line-height:1.14; }
+.intro { margin-top:10px; color:var(--muted); max-width:76ch; }
+.grid-2,.grid-3 { display:grid; gap:18px; }
+.grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.card { padding:22px; }
+.card h3 { margin-bottom:10px; font-size:1.1rem; }
+.eq { margin-top:12px; padding:14px 16px; background:#161d28; color:#eef4ff; border-radius:16px; font-family:Consolas,Monaco,monospace; overflow-x:auto; }
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; min-width:720px; }
+th,td { padding:12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--a3); font-size:.86rem; text-transform:uppercase; }
+.note { margin-top:14px; padding:14px 16px; background:rgba(15,118,110,.08); border-left:4px solid var(--a2); border-radius:0 16px 16px 0; }
+svg { width:100%; height:auto; }
+.footer { margin:28px auto 42px; padding:22px; }
+.footer ol { margin-left:20px; margin-top:10px; }
+@media (max-width:960px) { .grid-2,.grid-3 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <div class="wrap hero">
+    <span class="eyebrow">基礎2</span>
+    <h1>フィルタは「何Hzをどれだけ通すか」を決める。DSP の中心はここにある。</h1>
+    <p class="lead">tone, EQ, wah, resonance, cab, de-esser, even compressor の検出部まで、DSP は驚くほど filter だらけです。このページでは時間領域と周波数領域の見方を往復しながら、IIR と FIR を実務寄りに整理します。</p>
+    <div class="nav">
+      <a href="fundamentals-sampling.html">前: サンプリング</a>
+      <a href="fundamentals-timefx.html">次: 時間系エフェクト</a>
+      <a href="dsp-lab.html">体験ラボ</a>
+    </div>
+  </div>
+
+  <section class="wrap">
+    <div class="kicker">Why Filters Matter</div>
+    <h2 class="section-title">フィルタは「波形を直接いじる」よりも、「どの周波数成分をどう扱うか」で考えると分かりやすいです。</h2>
+    <p class="intro">ギターの音色は、倍音バランスが変わるだけで大きく変わります。low-pass は高域を削って丸くし、high-pass は低域の濁りを削ります。band-pass や peaking は wah や EQ の核になります。</p>
+    <div class="grid-3" style="margin-top:18px;">
+      <div class="card"><h3>Low-pass</h3><p>高域を落として丸くする。analog delay や cab、tone ノブの基本。</p></div>
+      <div class="card"><h3>High-pass</h3><p>低域を削って輪郭を出す。muddy さを避ける時に効く。</p></div>
+      <div class="card"><h3>Band / Peak</h3><p>狙った帯域だけ持ち上げたり通したりする。wah、presence、resonance に直結する。</p></div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Difference Equation</div>
+    <h2 class="section-title">実装はだいたい「今と昔の値を、重み付きで足す」形です。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>最小の形</h3>
+        <div class="eq">y[n] = b0 x[n] + b1 x[n-1] + b2 x[n-2] - a1 y[n-1] - a2 y[n-2]</div>
+        <p style="margin-top:10px;">この式の b 側が feedforward、a 側が feedback です。係数の組み合わせによって cutoff、Q、shelf 特性などが決まります。</p>
+      </div>
+      <div class="card">
+        <h3>b0, b1, b2, a1, a2 が何を意味するか</h3>
+        <p>つまみを回すと内部で係数が変わります。Tone を暗くすれば high-frequency の通り方が変わり、Resonance を上げれば特定帯域の山が鋭くなります。つまり UI の背後には係数計算があります。</p>
+        <div class="note">解析ドキュメントで coefficient table が出てきたら、それは「つまみ位置ごとの周波数応答の設計図」です。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">FIR vs IIR</div>
+    <h2 class="section-title">FIR は入力だけを見る、IIR は出力も記憶する。これがまず大枠です。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>FIR</h3>
+        <p>過去入力の重み付き和です。常に安定で、線形位相を作りやすいのが強みです。cab IR や linear-phase な補正に向いています。</p>
+        <div class="eq">y[n] = Σ h[k] x[n-k]</div>
+      </div>
+      <div class="card">
+        <h3>IIR</h3>
+        <p>過去出力も使うので効率が良く、少ない係数で急峻な応答を作れます。EQ、tone stack、wah、resonant filter に多いです。</p>
+        <div class="eq">y[n] = Σ b[k]x[n-k] - Σ a[k]y[n-k]</div>
+      </div>
+    </div>
+    <div class="table-wrap card" style="margin-top:18px;">
+      <table>
+        <thead><tr><th>項目</th><th>FIR</th><th>IIR</th></tr></thead>
+        <tbody>
+          <tr><td>安定性</td><td>基本的に扱いやすい</td><td>係数次第で不安定になりうる</td></tr>
+          <tr><td>計算量</td><td>長い IR では重くなりやすい</td><td>少ない係数で強い特性を作れる</td></tr>
+          <tr><td>位相</td><td>線形位相を作りやすい</td><td>一般には位相が曲がる</td></tr>
+          <tr><td>典型用途</td><td>cab sim, convolution, correction</td><td>EQ, tone, wah, envelope smoothing</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Frequency Response</div>
+    <h2 class="section-title">同じフィルタでも「波形の見た目」より「周波数応答」で読む方が実務的です。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>見るべき軸</h3>
+        <p>cutoff frequency、gain、Q、slope。この 4 つを意識するとほとんどのフィルタ UI を説明できます。</p>
+        <svg viewBox="0 0 720 240" aria-label="周波数応答のイメージ">
+          <line x1="50" y1="180" x2="670" y2="180" stroke="#cbc4b4" stroke-width="2"/>
+          <line x1="50" y1="40" x2="50" y2="180" stroke="#cbc4b4" stroke-width="2"/>
+          <path d="M60 76 H210 C300 76, 330 82, 360 110 S430 176, 660 176" fill="none" stroke="#9a3412" stroke-width="5"/>
+          <path d="M60 176 H298 C332 176, 348 100, 386 100 C432 100, 450 176, 660 176" fill="none" stroke="#1d4ed8" stroke-width="5"/>
+          <text x="98" y="60" fill="#9a3412" font-size="15">low-pass</text>
+          <text x="380" y="88" fill="#1d4ed8" font-size="15">resonant peak</text>
+        </svg>
+      </div>
+      <div class="card">
+        <h3>ギターエフェクトでの読み替え</h3>
+        <p>Tone は low-pass / shelf、Presence は high-mid / high shelf、Wah は動く band-pass、Cab は複雑な複合応答として見られます。名前が違っても、実際には周波数応答を変える装置であることが多いです。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Implementation Notes</div>
+    <h2 class="section-title">実装では「良い設計」だけでなく、「壊れない構造」も重要です。</h2>
+    <div class="grid-3" style="margin-top:18px;">
+      <div class="card"><h3>biquad 化</h3><p>高次フィルタは 2 次セクションに分けると数値的に扱いやすくなります。</p></div>
+      <div class="card"><h3>係数更新</h3><p>ノブ操作で係数が急変すると zipper noise が出るので、補間することがあります。</p></div>
+      <div class="card"><h3>固定小数点 vs 浮動小数点</h3><p>DSP の世代によって丸め、headroom、スケーリングの作法が変わります。</p></div>
+    </div>
+  </section>
+
+  <div class="wrap footer">
+    <h2>次に読むページ</h2>
+    <ol>
+      <li><a href="fundamentals-timefx.html">fundamentals-timefx.html</a>: delay, chorus, flanger, reverb を時間軸で整理する</li>
+      <li><a href="comp-cab.html">comp-cab.html</a>: filter の知識を Comp と Cabinet に適用する</li>
+      <li><a href="dsp-lab.html">dsp-lab.html</a>: low-pass や cabinet の効果を耳とグラフで見る</li>
+    </ol>
+  </div>
+</body>
+</html>

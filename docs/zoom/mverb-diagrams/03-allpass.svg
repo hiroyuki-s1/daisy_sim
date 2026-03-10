@@ -1,0 +1,47 @@
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" font-family="monospace" font-size="12">
+  <rect width="600" height="200" fill="#1a1a2e" rx="6"/>
+  <text x="300" y="22" text-anchor="middle" fill="#e0e0e0" font-size="13" font-weight="bold">Allpass Filter (全通過フィルタ)</text>
+
+  <text x="30" y="90" fill="#5b8dd9" font-size="11">input</text>
+  <line x1="75" y1="87" x2="120" y2="87" stroke="#5b8dd9" stroke-width="1.5"/>
+
+  <circle cx="130" cy="87" r="10" fill="none" stroke="#f99"/>
+  <text x="130" y="91" text-anchor="middle" fill="#f99" font-size="10">×</text>
+  <text x="130" y="110" text-anchor="middle" fill="#f99" font-size="9">-g</text>
+
+  <circle cx="200" cy="87" r="12" fill="none" stroke="#fff"/>
+  <text x="200" y="91" text-anchor="middle" fill="#fff" font-size="12">+</text>
+
+  <line x1="140" y1="87" x2="188" y2="87" stroke="#ccc" stroke-width="1"/>
+  <line x1="212" y1="87" x2="520" y2="87" stroke="#5bd9d9" stroke-width="1.5"/>
+  <text x="535" y="91" fill="#5bd9d9" font-size="11">output</text>
+
+  <rect x="260" y="130" width="100" height="35" rx="4" fill="#2a1a3a" stroke="#a45bd9"/>
+  <text x="310" y="152" text-anchor="middle" fill="#c88aef" font-size="11">z⁻ᴺ (Delay)</text>
+
+  <line x1="200" y1="99" x2="200" y2="147" stroke="#ccc" stroke-width="1"/>
+  <line x1="200" y1="147" x2="260" y2="147" stroke="#ccc" stroke-width="1"/>
+  <line x1="360" y1="147" x2="440" y2="147" stroke="#ccc" stroke-width="1"/>
+  <text x="400" y="140" fill="#aaa" font-size="9">bufout</text>
+
+  <line x1="440" y1="147" x2="440" y2="87" stroke="#ccc" stroke-width="1"/>
+  <line x1="440" y1="87" x2="430" y2="87" stroke="#ccc" stroke-width="1"/>
+
+  <circle cx="310" cy="55" r="12" fill="none" stroke="#fff"/>
+  <text x="310" y="59" text-anchor="middle" fill="#fff" font-size="12">+</text>
+
+  <line x1="120" y1="87" x2="120" y2="55" stroke="#ccc" stroke-width="1"/>
+  <line x1="120" y1="55" x2="298" y2="55" stroke="#ccc" stroke-width="1"/>
+
+  <line x1="440" y1="55" x2="440" y2="30" stroke="#ccc" stroke-width="1"/>
+  <circle cx="440" cy="55" r="10" fill="none" stroke="#f99"/>
+  <text x="440" y="59" text-anchor="middle" fill="#f99" font-size="10">×</text>
+  <text x="460" y="55" fill="#f99" font-size="9">g</text>
+  <line x1="440" y1="45" x2="440" y2="35" stroke="#ccc" stroke-width="1"/>
+  <line x1="440" y1="35" x2="322" y2="35" stroke="#ccc" stroke-width="1"/>
+  <line x1="322" y1="35" x2="310" y2="43" stroke="#ccc" stroke-width="1"/>
+
+  <line x1="310" y1="67" x2="310" y2="130" stroke="#ccc" stroke-width="1"/>
+
+  <text x="300" y="190" text-anchor="middle" fill="#aaa" font-size="10">g = フィードバック係数 (MVerb では 0.625〜0.75)</text>
+</svg>

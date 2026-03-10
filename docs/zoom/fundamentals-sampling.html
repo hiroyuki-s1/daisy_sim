@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基礎1 サンプリングと量子化 | ZOOM DSP コース</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f2e9;
+  --paper: #fffdfa;
+  --ink: #19202a;
+  --muted: #5f6674;
+  --line: #d8d1c3;
+  --accent: #c2410c;
+  --accent2: #1d4ed8;
+  --accent3: #0f766e;
+  --shadow: 0 16px 40px rgba(25, 32, 42, 0.08);
+}
+body { font-family: "Yu Gothic UI", "Meiryo", sans-serif; background: linear-gradient(180deg, #f6f2e9, #efe7d8); color: var(--ink); line-height: 1.8; }
+.wrap { width: min(1160px, calc(100% - 32px)); margin: 0 auto; }
+.hero, .card, .footer { background: rgba(255,253,250,0.94); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); }
+.hero { margin: 28px auto 20px; overflow: hidden; }
+.hero-inner { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 24px; padding: 28px; }
+.eyebrow { display: inline-block; padding: 8px 14px; border-radius: 999px; background: #ffe7db; color: var(--accent); font-weight: 700; font-size: 0.88rem; }
+h1 { margin-top: 14px; font-size: clamp(2rem, 4vw, 3.7rem); line-height: 1.05; }
+.lead { margin-top: 16px; color: var(--muted); font-size: 1.06rem; }
+.nav { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+.nav a { text-decoration: none; border-radius: 999px; padding: 10px 16px; border: 1px solid var(--line); background: #fff; color: var(--ink); font-weight: 700; }
+.side { background: linear-gradient(180deg, #151b26, #0f1520); border-radius: 20px; padding: 20px; color: #e8eef8; }
+.side h2 { font-size: 1rem; color: #ffb89f; margin-bottom: 10px; }
+.side ul { margin-left: 18px; color: #cad4e2; }
+.side li { margin: 6px 0; }
+section { padding: 16px 0; }
+.section-title { margin-top: 8px; font-size: clamp(1.45rem, 3vw, 2.3rem); line-height: 1.14; }
+.kicker { color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.86rem; font-weight: 700; }
+.intro { margin-top: 10px; color: var(--muted); max-width: 76ch; }
+.grid-2, .grid-3 { display: grid; gap: 18px; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card { padding: 22px; }
+.card h3 { margin-bottom: 10px; font-size: 1.1rem; }
+.eq { margin-top: 14px; padding: 14px 16px; background: #161c27; color: #eef4ff; border-radius: 16px; font-family: Consolas, Monaco, monospace; overflow-x: auto; }
+.note { margin-top: 14px; padding: 14px 16px; border-left: 4px solid var(--accent3); background: rgba(15,118,110,0.08); border-radius: 0 16px 16px 0; }
+.mini { margin-top: 10px; color: var(--muted); font-size: 0.92rem; }
+table { width: 100%; border-collapse: collapse; min-width: 680px; }
+th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--accent2); font-size: 0.86rem; text-transform: uppercase; }
+.table-wrap { overflow-x: auto; }
+svg { width: 100%; height: auto; }
+.footer { margin: 28px auto 42px; padding: 22px; }
+.footer ol { margin-left: 20px; margin-top: 10px; }
+@media (max-width: 960px) { .hero-inner, .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+  <div class="wrap hero">
+    <div class="hero-inner">
+      <div>
+        <span class="eyebrow">基礎1</span>
+        <h1>サンプリングと量子化を理解すると、DSP の土台が崩れなくなる。</h1>
+        <p class="lead">このページでは、アナログの音がどのように数列になるか、そのとき何を失い、何を守るのかを丁寧に整理します。ここが曖昧だと、aliasing や bit depth、oversampling の話が全部ばらばらに見えます。</p>
+        <div class="nav">
+          <a href="begin.html">コースハブへ戻る</a>
+          <a href="fundamentals-filters.html">次: フィルタ</a>
+          <a href="dsp-lab.html">体験ラボ</a>
+        </div>
+      </div>
+      <aside class="side">
+        <h2>このページのゴール</h2>
+        <ul>
+          <li>sample rate と bit depth の役割を分けて説明できる</li>
+          <li>Nyquist 条件が何を守るルールか言える</li>
+          <li>aliasing が drive や amp sim で問題になる理由が分かる</li>
+          <li>oversampling の意味を実務寄りに理解できる</li>
+        </ul>
+      </aside>
+    </div>
+  </div>
+
+  <section class="wrap">
+    <div class="kicker">Core Idea</div>
+    <h2 class="section-title">サンプリングは「音を一定時間ごとに測ること」、量子化は「その測定値を有限桁に丸めること」です。</h2>
+    <p class="intro">この 2 つは似て見えて別物です。sample rate は時間方向の細かさ、bit depth は振幅方向の細かさを決めます。時間方向が粗いと aliasing、振幅方向が粗いと quantization noise が目立ちます。</p>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>時間方向の細かさ</h3>
+        <p>48 kHz は、1 秒を 48,000 個の区切りに分けて値を読むという意味です。時間軸に対して「どれだけ頻繁に読むか」を決めます。</p>
+        <div class="eq">sample period T = 1 / f_s</div>
+        <p class="mini">48 kHz なら 1 サンプルは約 20.8 µs ごとです。</p>
+      </div>
+      <div class="card">
+        <h3>振幅方向の細かさ</h3>
+        <p>16-bit や 24-bit は、サンプル値を何段階で表現するかです。階段が粗いほど小さい違いを丸め込んでしまいます。</p>
+        <div class="eq">16-bit ≒ 65,536 段階 / 24-bit ≒ 16,777,216 段階</div>
+        <p class="mini">実務では内部処理に float を使って headroom を確保することが多いです。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Nyquist</div>
+    <h2 class="section-title">Nyquist の要点は、「扱いたい最高周波数の 2 倍より速く読む」というルールです。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>直感で理解する</h3>
+        <p>波が 1 周する間に 2 点より少ない観測しかなければ、その波がどれだけ細かいかを見分けにくくなります。別の低い波として説明できてしまうので、元の情報を区別できません。</p>
+        <div class="eq">f_s &gt; 2B</div>
+        <p class="mini">B は元信号に含まれる最高周波数帯域の上限です。</p>
+      </div>
+      <div class="card">
+        <h3>音楽制作でどう使うか</h3>
+        <p>可聴帯域を 20 kHz 程度までとみなすなら、44.1 kHz や 48 kHz が実用的な基準になります。より高い sample rate は、可聴帯域そのものを増やすというより、filter 設計や nonlinear 処理を楽にする意味が強いです。</p>
+        <div class="note">「96 kHz の方が何でも必ず音が良い」ではありません。DSP のどこで何をしたいかで利点が変わります。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Aliasing</div>
+    <h2 class="section-title">aliasing は「高すぎる成分が、もっと低い別の成分として折り返して見える」現象です。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>なぜ drive で問題になるのか</h3>
+        <p>clipping や waveshaping のような nonlinear 処理は、新しい高調波を大量に作ります。その高調波が Nyquist 周波数を超えると、上に行かずに下に折り返してきます。これが耳に不自然なジャリつきやざらつきとして出ます。</p>
+        <svg viewBox="0 0 720 220" aria-label="aliasing の折り返しイメージ">
+          <line x1="40" y1="170" x2="680" y2="170" stroke="#c9c1b0" stroke-width="2"/>
+          <line x1="360" y1="40" x2="360" y2="180" stroke="#1d4ed8" stroke-width="3" stroke-dasharray="6 6"/>
+          <text x="360" y="28" text-anchor="middle" fill="#1d4ed8" font-size="16" font-weight="700">Nyquist</text>
+          <rect x="86" y="126" width="28" height="44" fill="#c2410c"/>
+          <rect x="152" y="106" width="28" height="64" fill="#c2410c"/>
+          <rect x="218" y="84" width="28" height="86" fill="#c2410c"/>
+          <rect x="284" y="60" width="28" height="110" fill="#c2410c"/>
+          <rect x="416" y="70" width="28" height="100" fill="#0f766e"/>
+          <rect x="482" y="96" width="28" height="74" fill="#0f766e"/>
+          <rect x="548" y="120" width="28" height="50" fill="#0f766e"/>
+          <path d="M410 54 C450 30, 520 30, 566 54" fill="none" stroke="#0f766e" stroke-width="4" marker-end="url(#arr)"/>
+          <defs><marker id="arr" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto"><path d="M0,0 L0,8 L8,4 z" fill="#0f766e"/></marker></defs>
+          <text x="130" y="200" fill="#5f6674" font-size="15">本来の高調波</text>
+          <text x="500" y="200" fill="#5f6674" font-size="15">折り返して見える alias</text>
+        </svg>
+      </div>
+      <div class="card">
+        <h3>aliasing を抑える典型手段</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>手段</th><th>考え方</th><th>よく使う場面</th></tr></thead>
+            <tbody>
+              <tr><td>入力を帯域制限</td><td>高域を事前に整理して折り返し元を減らす</td><td>特殊な synth / 極端な distortion</td></tr>
+              <tr><td>oversampling</td><td>内部だけ高 sample rate で処理し、あとで戻す</td><td>amp sim, waveshaper, saturator</td></tr>
+              <tr><td>後段 low-pass</td><td>目立つ高域を整理する</td><td>cab sim の前後、tone shaping</td></tr>
+              <tr><td>band-limited algorithm</td><td>そもそも折り返しにくい手法を選ぶ</td><td>oscillator, discontinuity を含む処理</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Quantization</div>
+    <h2 class="section-title">量子化は「丸め誤差」ですが、静かな場面や feedback の中で効いてきます。</h2>
+    <div class="grid-3" style="margin-top:18px;">
+      <div class="card">
+        <h3>丸める</h3>
+        <p>連続値を有限段階に丸めるので、真値との差が残ります。これが量子化誤差です。</p>
+      </div>
+      <div class="card">
+        <h3>積み上がる</h3>
+        <p>多段処理や feedback 系では誤差が蓄積しやすく、ノイズ床や限界動作に影響します。</p>
+      </div>
+      <div class="card">
+        <h3>対策する</h3>
+        <p>float 処理、適切な headroom、必要に応じた dithering やスケーリングで扱います。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Practical View</div>
+    <h2 class="section-title">ZOOM の解析を読むときは、まず「この effect は時間方向で難しいのか、振幅方向で難しいのか」を見ます。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>時間方向で難しい例</h3>
+        <p>Delay、Reverb、Pitch 系は buffer、補間、複数 delay line が出てきます。sample rate の意味と buffer 長の感覚が重要です。</p>
+      </div>
+      <div class="card">
+        <h3>振幅方向で難しい例</h3>
+        <p>Drive、Amp、Comp は gain staging、nonlinear 処理、envelope、aliasing 対策が重要です。bit depth や内部 float も効きます。</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap footer">
+    <h2>次に読むと理解がつながるページ</h2>
+    <ol>
+      <li><a href="fundamentals-filters.html">fundamentals-filters.html</a>: 周波数応答と IIR / FIR を整理する</li>
+      <li><a href="dsp-lab.html">dsp-lab.html</a>: aliasing と oversampling を触って確かめる</li>
+      <li><a href="advanced-zoom-dsp.html">advanced-zoom-dsp.html</a>: 実装上の意味に接続する</li>
+    </ol>
+  </div>
+</body>
+</html>

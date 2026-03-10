@@ -1,0 +1,20 @@
+<svg viewBox="0 0 600 120" xmlns="http://www.w3.org/2000/svg" font-family="monospace" font-size="12">
+  <rect width="600" height="120" fill="#1a1a2e" rx="6"/>
+  <text x="300" y="20" text-anchor="middle" fill="#e0e0e0" font-size="13" font-weight="bold">Delay Line (遅延線)</text>
+
+  <rect x="100" y="40" width="400" height="40" rx="4" fill="#1a3a2e" stroke="#4a9"/>
+  <text x="120" y="65" fill="#4a9" font-size="10">x[n-N]</text>
+  <text x="200" y="65" fill="#4a9" font-size="10">x[n-3]</text>
+  <text x="290" y="65" fill="#4a9" font-size="10">x[n-2]</text>
+  <text x="380" y="65" fill="#4a9" font-size="10">x[n-1]</text>
+  <text x="460" y="65" fill="#6fb" font-size="10" font-weight="bold">x[n]</text>
+
+  <line x1="180" y1="40" x2="180" y2="80" stroke="#4a9" stroke-width="0.5"/>
+  <line x1="270" y1="40" x2="270" y2="80" stroke="#4a9" stroke-width="0.5"/>
+  <line x1="360" y1="40" x2="360" y2="80" stroke="#4a9" stroke-width="0.5"/>
+  <line x1="450" y1="40" x2="450" y2="80" stroke="#4a9" stroke-width="0.5"/>
+
+  <text x="520" y="55" fill="#8ef" font-size="10">入力→</text>
+  <text x="30" y="55" fill="#f99" font-size="10">→出力</text>
+  <text x="300" y="105" text-anchor="middle" fill="#aaa" font-size="10">N サンプル遅延した信号が出力される (リングバッファで実装)</text>
+</svg>

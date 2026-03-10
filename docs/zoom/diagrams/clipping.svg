@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 280" font-family="'Segoe UI', Arial, sans-serif" font-size="13">
+  <defs>
+    <marker id="ax" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10" fill="#666"/></marker>
+    <marker id="ay" viewBox="0 0 10 10" refX="5" refY="0" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,10 L5,0 L10,10" fill="#666"/></marker>
+  </defs>
+
+  <!-- Input waveform -->
+  <g transform="translate(10,20)">
+    <rect width="260" height="240" rx="12" fill="#1a1a2e" stroke="#888" stroke-width="1.5"/>
+    <text x="130" y="28" text-anchor="middle" fill="#ccc" font-weight="bold" font-size="15">入力波形 (サイン波)</text>
+    <line x1="30" y1="140" x2="240" y2="140" stroke="#444" stroke-width="0.5"/>
+    <line x1="135" y1="50" x2="135" y2="230" stroke="#444" stroke-width="0.5"/>
+    <!-- sine wave -->
+    <path d="M40,140 Q70,50 100,50 Q130,50 135,140 Q140,230 170,230 Q200,230 230,140" fill="none" stroke="#4a9eff" stroke-width="3"/>
+    <text x="130" y="248" text-anchor="middle" fill="#888" font-size="11">元の波形</text>
+  </g>
+
+  <!-- Hard clip -->
+  <g transform="translate(310,20)">
+    <rect width="260" height="240" rx="12" fill="#1a1a2e" stroke="#e94560" stroke-width="1.5"/>
+    <text x="130" y="28" text-anchor="middle" fill="#e94560" font-weight="bold" font-size="15">ハードクリップ</text>
+    <text x="130" y="46" text-anchor="middle" fill="#888" font-size="11">ZOOM AcSim の方式</text>
+    <line x1="30" y1="140" x2="240" y2="140" stroke="#444" stroke-width="0.5"/>
+    <line x1="135" y1="50" x2="135" y2="230" stroke="#444" stroke-width="0.5"/>
+    <!-- clipping threshold lines -->
+    <line x1="35" y1="85" x2="240" y2="85" stroke="#e94560" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.5"/>
+    <line x1="35" y1="195" x2="240" y2="195" stroke="#e94560" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.5"/>
+    <text x="242" y="88" fill="#e94560" font-size="9">+閾値</text>
+    <text x="242" y="198" fill="#e94560" font-size="9">−閾値</text>
+    <!-- hard clipped wave -->
+    <path d="M40,140 Q55,110 65,85 L105,85 Q115,85 120,100 Q130,130 135,140 Q140,160 150,195 L190,195 Q200,195 210,170 Q225,140 230,140" fill="none" stroke="#e94560" stroke-width="3"/>
+    <text x="130" y="232" text-anchor="middle" fill="#888" font-size="10">天井でバッサリ切断</text>
+    <text x="130" y="248" text-anchor="middle" fill="#e94560" font-size="10">→ ファズ的な荒い歪み</text>
+  </g>
+
+  <!-- Soft clip -->
+  <g transform="translate(610,20)">
+    <rect width="260" height="240" rx="12" fill="#1a1a2e" stroke="#2ecc71" stroke-width="1.5"/>
+    <text x="130" y="28" text-anchor="middle" fill="#2ecc71" font-weight="bold" font-size="15">ソフトクリップ (tanh)</text>
+    <text x="130" y="46" text-anchor="middle" fill="#888" font-size="11">松プランで提案</text>
+    <line x1="30" y1="140" x2="240" y2="140" stroke="#444" stroke-width="0.5"/>
+    <line x1="135" y1="50" x2="135" y2="230" stroke="#444" stroke-width="0.5"/>
+    <!-- soft clipped wave - smoothly compressed -->
+    <path d="M40,140 Q60,105 75,80 Q90,65 100,62 Q115,62 125,80 Q132,110 135,140 Q138,170 145,200 Q155,218 165,220 Q180,218 195,195 Q215,145 230,140" fill="none" stroke="#2ecc71" stroke-width="3"/>
+    <!-- original sine ghost -->
+    <path d="M40,140 Q70,50 100,50 Q130,50 135,140 Q140,230 170,230 Q200,230 230,140" fill="none" stroke="#4a9eff" stroke-width="1" stroke-dasharray="3,3" opacity="0.3"/>
+    <text x="130" y="232" text-anchor="middle" fill="#888" font-size="10">丸く圧縮 (元の形を保持)</text>
+    <text x="130" y="248" text-anchor="middle" fill="#2ecc71" font-size="10">→ チューブ的な温かい歪み</text>
+  </g>
+</svg>

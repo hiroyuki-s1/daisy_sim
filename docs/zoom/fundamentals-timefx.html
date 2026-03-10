@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基礎3 時間系エフェクト | ZOOM DSP コース</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+:root { --bg:#f4f0e8; --paper:#fffdfa; --ink:#1a2230; --muted:#5c6576; --line:#d6d0c3; --accent:#b45309; --a2:#0f766e; --a3:#1d4ed8; --shadow:0 16px 40px rgba(26,34,48,.08); }
+body { font-family:"Yu Gothic UI","Meiryo",sans-serif; background:linear-gradient(180deg,#f4f0e8,#ece4d5); color:var(--ink); line-height:1.8; }
+.wrap { width:min(1160px,calc(100% - 32px)); margin:0 auto; }
+.hero,.card,.footer { background:rgba(255,253,250,.94); border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow); }
+.hero { margin:28px auto 20px; padding:28px; }
+.eyebrow { display:inline-block; padding:8px 14px; border-radius:999px; background:#ffedd5; color:var(--accent); font-size:.88rem; font-weight:700; }
+h1 { margin-top:14px; font-size:clamp(2rem,4vw,3.6rem); line-height:1.05; }
+.lead { margin-top:16px; color:var(--muted); }
+.nav { display:flex; gap:12px; flex-wrap:wrap; margin-top:18px; }
+.nav a { text-decoration:none; color:var(--ink); border:1px solid var(--line); padding:10px 16px; border-radius:999px; background:#fff; font-weight:700; }
+section { padding:16px 0; }
+.kicker { color:var(--accent); text-transform:uppercase; letter-spacing:.08em; font-size:.86rem; font-weight:700; }
+.section-title { margin-top:8px; font-size:clamp(1.45rem,3vw,2.3rem); line-height:1.14; }
+.intro { margin-top:10px; color:var(--muted); max-width:76ch; }
+.grid-2,.grid-3 { display:grid; gap:18px; }
+.grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.card { padding:22px; }
+.card h3 { margin-bottom:10px; font-size:1.1rem; }
+.eq { margin-top:12px; padding:14px 16px; background:#171d28; color:#eef4ff; border-radius:16px; font-family:Consolas,Monaco,monospace; overflow-x:auto; }
+.callout { margin-top:14px; padding:14px 16px; background:rgba(15,118,110,.08); border-left:4px solid var(--a2); border-radius:0 16px 16px 0; }
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; min-width:720px; }
+th,td { padding:12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--a3); font-size:.86rem; text-transform:uppercase; }
+svg { width:100%; height:auto; }
+.footer { margin:28px auto 42px; padding:22px; }
+.footer ol { margin-left:20px; margin-top:10px; }
+@media (max-width:960px) { .grid-2,.grid-3 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <div class="wrap hero">
+    <span class="eyebrow">基礎3</span>
+    <h1>delay, chorus, flanger, reverb は、全部「時間をずらして混ぜる」仲間です。</h1>
+    <p class="lead">時間系エフェクトは一見種類が多いですが、核は buffer と feedback と modulation です。このページでは、一本の delay line から空間系までを連続したものとして説明します。</p>
+    <div class="nav">
+      <a href="fundamentals-filters.html">前: フィルタ</a>
+      <a href="comp-cab.html">次: Comp と Cabinet</a>
+      <a href="dsp-lab.html">体験ラボ</a>
+    </div>
+  </div>
+
+  <section class="wrap">
+    <div class="kicker">Delay Line</div>
+    <h2 class="section-title">delay の本体は「少し前のサンプルを取り出して、今の音に混ぜる」buffer です。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>一番単純な delay</h3>
+        <div class="eq">y[n] = dry * x[n] + wet * x[n-D]</div>
+        <p style="margin-top:10px;">D は何サンプル遅らせるかです。48 kHz なら 480 サンプルで 10 ms、4800 サンプルで 100 ms です。</p>
+      </div>
+      <div class="card">
+        <h3>feedback を足す</h3>
+        <div class="eq">buffer[n] = x[n] + feedback * buffer[n-D]</div>
+        <p style="margin-top:10px;">これで繰り返しが生まれます。feedback を上げすぎると自己発振に近づきます。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">One Family</div>
+    <h2 class="section-title">短い delay、揺れる delay、たくさんの delay。その違いが chorus, flanger, reverb を分けています。</h2>
+    <div class="table-wrap card" style="margin-top:18px;">
+      <table>
+        <thead><tr><th>effect</th><th>delay 長</th><th>特徴</th><th>追加要素</th></tr></thead>
+        <tbody>
+          <tr><td>doubling</td><td>10-40 ms</td><td>厚みが出る</td><td>feedback ほぼなし</td></tr>
+          <tr><td>slapback</td><td>60-180 ms</td><td>1 回目の反射感</td><td>軽い feedback</td></tr>
+          <tr><td>chorus</td><td>数 ms - 数十 ms</td><td>揺れ、広がり</td><td>LFO で delay time を変調</td></tr>
+          <tr><td>flanger</td><td>さらに短い</td><td>櫛形の干渉、ジェット感</td><td>feedback と modulation</td></tr>
+          <tr><td>reverb</td><td>多数の短い反射</td><td>空間、尾</td><td>multi-delay network + damping</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Interpolation</div>
+    <h2 class="section-title">delay time を滑らかに変えるには、整数サンプルだけでは足りません。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>なぜ補間が要るか</h3>
+        <p>delay time を 12.3 サンプルのように中途半端に動かしたいとき、buffer は整数番地しか持ちません。そこで周辺サンプルから中間値を作る interpolation が必要です。</p>
+        <svg viewBox="0 0 720 220" aria-label="補間のイメージ">
+          <line x1="60" y1="170" x2="660" y2="170" stroke="#c8c1b1" stroke-width="2"/>
+          <g fill="#1d4ed8">
+            <circle cx="120" cy="124" r="6"/>
+            <circle cx="220" cy="88" r="6"/>
+            <circle cx="320" cy="146" r="6"/>
+            <circle cx="420" cy="110" r="6"/>
+            <circle cx="520" cy="158" r="6"/>
+          </g>
+          <circle cx="270" cy="113" r="7" fill="#b45309"/>
+          <path d="M220 88 L270 113 L320 146" fill="none" stroke="#0f766e" stroke-width="4"/>
+          <text x="244" y="72" fill="#5c6576" font-size="14">周辺から中間値を推定</text>
+        </svg>
+      </div>
+      <div class="card">
+        <h3>音にどう効くか</h3>
+        <p>補間が粗いと modulation 系でざらつきや不要な色付けが出ます。高品質な delay や pitch 系が重いのは、補間や resampling のコストもあるからです。</p>
+        <div class="callout">解析文書で interpolation や rate conversion 相当の処理が見えたら、それは「時間を連続っぽく扱うための工夫」です。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Reverb</div>
+    <h2 class="section-title">reverb は「大量の反射を、破綻しない形で、自然に減衰させる」問題です。</h2>
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="card">
+        <h3>アルゴリズム reverb の考え方</h3>
+        <p>複数 delay line、comb filter、allpass、damping filter を組み合わせて、初期反射と後期残響を分けて作ることが多いです。FDN はその発展系として、複数 line 間でエネルギーを回します。</p>
+      </div>
+      <div class="card">
+        <h3>convolution reverb の考え方</h3>
+        <p>部屋や装置の impulse response を測って、その応答を丸ごと畳み込みます。cab sim の理解とかなり近いです。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="kicker">Practical Reading</div>
+    <h2 class="section-title">ZOOM の delay / reverb を読むときの着眼点</h2>
+    <div class="grid-3" style="margin-top:18px;">
+      <div class="card"><h3>buffer 長</h3><p>最長 delay time と memory 使用量の感覚を作ります。</p></div>
+      <div class="card"><h3>feedback path</h3><p>どこに filter が入るかで analog っぽさや暗さが決まります。</p></div>
+      <div class="card"><h3>modulation</h3><p>LFO が delay time を揺らすか、filter を揺らすかで effect の性格が変わります。</p></div>
+    </div>
+  </section>
+
+  <div class="wrap footer">
+    <h2>次に読むページ</h2>
+    <ol>
+      <li><a href="comp-cab.html">comp-cab.html</a>: 基礎を代表的な effect へ接続する</li>
+      <li><a href="advanced-zoom-dsp.html">advanced-zoom-dsp.html</a>: ZD2 と TI C6000 の視点で読む</li>
+      <li><a href="dsp-lab.html">dsp-lab.html</a>: delay と reverb の挙動を可視化して体験する</li>
+    </ol>
+  </div>
+</body>
+</html>

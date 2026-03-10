@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+  <defs>
+    <style>
+      text { font-family: 'Segoe UI', 'Helvetica', Arial, sans-serif; }
+      .title { font-size: 18px; font-weight: bold; fill: #222; }
+      .subtitle { font-size: 11px; fill: #555; }
+      .board-label { font-size: 14px; font-weight: bold; fill: #fff; }
+      .pin-label-w { font-size: 10px; fill: #fff; font-weight: 600; }
+      .pin-label-d { font-size: 9.5px; fill: #333; font-weight: 600; }
+      .component-label { font-size: 9px; fill: #aaa; }
+      .legend-text { font-size: 10px; fill: #333; }
+      .legend-bold { font-size: 10px; fill: #333; font-weight: bold; }
+      .wire { fill: none; stroke-width: 2.5; stroke-linecap: round; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="600" fill="#ffffff" rx="0"/>
+
+  <!-- Title -->
+  <text x="450" y="28" text-anchor="middle" class="title">Daisy Pod + SSD1309 OLED (2.42") 配線図</text>
+  <text x="450" y="44" text-anchor="middle" class="subtitle">SPI接続 Wiring Diagram</text>
+
+  <!-- ===== DAISY POD ===== -->
+  <rect x="40" y="65" width="300" height="360" rx="12" fill="#2a2a2a" stroke="#111" stroke-width="2"/>
+  <text x="190" y="88" text-anchor="middle" class="board-label">DAISY POD</text>
+
+  <!-- Daisy Seed sub-module -->
+  <rect x="90" y="100" width="200" height="70" rx="6" fill="#1a1a1a" stroke="#555" stroke-width="1.2"/>
+  <text x="190" y="126" text-anchor="middle" font-size="11" fill="#999" font-weight="bold" font-family="sans-serif">Daisy Seed</text>
+  <text x="190" y="142" text-anchor="middle" font-size="8" fill="#666" font-family="sans-serif">STM32H750 / ARM Cortex-M7</text>
+  <!-- USB -->
+  <rect x="165" y="154" width="50" height="12" rx="3" fill="#333" stroke="#555" stroke-width="0.5"/>
+  <text x="190" y="163" text-anchor="middle" font-size="7" fill="#888" font-family="sans-serif">USB-C</text>
+
+  <!-- Knobs -->
+  <circle cx="85" cy="215" r="18" fill="#444" stroke="#666" stroke-width="1.5"/>
+  <circle cx="85" cy="215" r="3" fill="#999"/>
+  <line x1="85" y1="215" x2="85" y2="200" stroke="#999" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="85" y="242" text-anchor="middle" class="component-label">KNOB1</text>
+
+  <circle cx="145" cy="215" r="18" fill="#444" stroke="#666" stroke-width="1.5"/>
+  <circle cx="145" cy="215" r="3" fill="#999"/>
+  <line x1="145" y1="215" x2="155" y2="202" stroke="#999" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="145" y="242" text-anchor="middle" class="component-label">KNOB2</text>
+
+  <!-- Encoder -->
+  <circle cx="250" cy="215" r="14" fill="#555" stroke="#777" stroke-width="1.5"/>
+  <circle cx="250" cy="215" r="5" fill="#444" stroke="#666" stroke-width="1"/>
+  <text x="250" y="240" text-anchor="middle" class="component-label">ENCODER</text>
+
+  <!-- Buttons -->
+  <rect x="72" y="258" width="26" height="16" rx="4" fill="#d32f2f"/>
+  <text x="85" y="286" text-anchor="middle" class="component-label">BTN1</text>
+  <rect x="118" y="258" width="26" height="16" rx="4" fill="#d32f2f"/>
+  <text x="131" y="286" text-anchor="middle" class="component-label">BTN2</text>
+
+  <!-- LEDs -->
+  <circle cx="210" cy="266" r="5" fill="#4caf50" opacity="0.9"/>
+  <circle cx="210" cy="266" r="7" fill="none" stroke="#388e3c" stroke-width="0.8"/>
+  <text x="210" y="286" text-anchor="middle" class="component-label">LED1</text>
+  <circle cx="240" cy="266" r="5" fill="#f44336" opacity="0.9"/>
+  <circle cx="240" cy="266" r="7" fill="none" stroke="#c62828" stroke-width="0.8"/>
+  <text x="240" y="286" text-anchor="middle" class="component-label">LED2</text>
+
+  <!-- Audio Jacks -->
+  <rect x="60" y="305" width="50" height="26" rx="6" fill="#181818" stroke="#555" stroke-width="1"/>
+  <circle cx="85" cy="318" r="7" fill="none" stroke="#777" stroke-width="1.5"/>
+  <circle cx="85" cy="318" r="2" fill="#555"/>
+  <text x="85" y="343" text-anchor="middle" class="component-label">AUDIO IN</text>
+  <rect x="130" y="305" width="50" height="26" rx="6" fill="#181818" stroke="#555" stroke-width="1"/>
+  <circle cx="155" cy="318" r="7" fill="none" stroke="#777" stroke-width="1.5"/>
+  <circle cx="155" cy="318" r="2" fill="#555"/>
+  <text x="155" y="343" text-anchor="middle" class="component-label">AUDIO OUT</text>
+
+  <!-- Pin header strip (right edge of Pod) -->
+  <rect x="308" y="105" width="32" height="290" rx="3" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
+
+  <!-- Pin: GND -->
+  <rect x="310" y="120" width="28" height="16" rx="2" fill="#333"/>
+  <text x="324" y="132" text-anchor="middle" class="pin-label-w">GND</text>
+  <circle cx="340" cy="128" r="4.5" fill="#222" stroke="#555" stroke-width="1"/>
+
+  <!-- Pin: 3V3 -->
+  <rect x="310" y="150" width="28" height="16" rx="2" fill="#7f1d1d"/>
+  <text x="324" y="162" text-anchor="middle" class="pin-label-w">3V3</text>
+  <circle cx="340" cy="158" r="4.5" fill="#b71c1c" stroke="#555" stroke-width="1"/>
+
+  <!-- Pin: D7 -->
+  <rect x="310" y="190" width="28" height="16" rx="2" fill="#bf6c00"/>
+  <text x="324" y="202" text-anchor="middle" class="pin-label-w">D7</text>
+  <circle cx="340" cy="198" r="4.5" fill="#e67e22" stroke="#555" stroke-width="1"/>
+
+  <!-- Pin: D8 -->
+  <rect x="310" y="220" width="28" height="16" rx="2" fill="#1565c0"/>
+  <text x="324" y="232" text-anchor="middle" class="pin-label-w">D8</text>
+  <circle cx="340" cy="228" r="4.5" fill="#1976d2" stroke="#555" stroke-width="1"/>
+
+  <!-- Pin: D9 -->
+  <rect x="310" y="250" width="28" height="16" rx="2" fill="#6a1b9a"/>
+  <text x="324" y="262" text-anchor="middle" class="pin-label-w">D9</text>
+  <circle cx="340" cy="258" r="4.5" fill="#8e44ad" stroke="#555" stroke-width="1"/>
+
+  <!-- Pin: D10 -->
+  <rect x="310" y="280" width="28" height="16" rx="2" fill="#1b5e20"/>
+  <text x="324" y="292" text-anchor="middle" class="pin-label-w">D10</text>
+  <circle cx="340" cy="288" r="4.5" fill="#2e7d32" stroke="#555" stroke-width="1"/>
+
+  <!-- Pin: D30 -->
+  <rect x="310" y="320" width="28" height="16" rx="2" fill="#9e8a14"/>
+  <text x="324" y="332" text-anchor="middle" class="pin-label-w">D30</text>
+  <circle cx="340" cy="328" r="4.5" fill="#c8a415" stroke="#555" stroke-width="1"/>
+
+  <!-- ===== SSD1309 OLED MODULE ===== -->
+  <rect x="580" y="90" width="260" height="300" rx="10" fill="#1b5e20" stroke="#0d3b1c" stroke-width="2"/>
+  <text x="710" y="115" text-anchor="middle" font-size="13" font-weight="bold" fill="#c8e6c9" font-family="sans-serif">SSD1309 OLED Module</text>
+  <text x="710" y="131" text-anchor="middle" font-size="9" fill="#a5d6a7" font-family="sans-serif">2.42インチ / 128x64 / SPI</text>
+
+  <!-- Display area -->
+  <rect x="610" y="145" width="200" height="110" rx="5" fill="#050505" stroke="#222" stroke-width="1.5"/>
+  <!-- Simulated OLED pixels -->
+  <text x="710" y="192" text-anchor="middle" font-size="16" fill="#00bcd4" font-family="monospace" opacity="0.6">128 x 64</text>
+  <text x="710" y="212" text-anchor="middle" font-size="9" fill="#00bcd4" font-family="monospace" opacity="0.4">OLED DISPLAY</text>
+  <!-- Subtle glow -->
+  <rect x="612" y="147" width="196" height="106" rx="4" fill="none" stroke="#00bcd4" stroke-width="0.3" opacity="0.3"/>
+
+  <!-- OLED Pin header -->
+  <rect x="618" y="280" width="184" height="24" rx="3" fill="#145228" stroke="#0d3b1c" stroke-width="1"/>
+
+  <!-- OLED Pin circles + labels (7 pins evenly spaced) -->
+  <circle cx="632" cy="292" r="4.5" fill="#222" stroke="#555" stroke-width="1"/>
+  <text x="632" y="316" text-anchor="middle" class="pin-label-d">GND</text>
+
+  <circle cx="658" cy="292" r="4.5" fill="#b71c1c" stroke="#555" stroke-width="1"/>
+  <text x="658" y="316" text-anchor="middle" class="pin-label-d">VDD</text>
+
+  <circle cx="684" cy="292" r="4.5" fill="#1976d2" stroke="#555" stroke-width="1"/>
+  <text x="684" y="316" text-anchor="middle" class="pin-label-d">SCK</text>
+
+  <circle cx="710" cy="292" r="4.5" fill="#2e7d32" stroke="#555" stroke-width="1"/>
+  <text x="710" y="316" text-anchor="middle" class="pin-label-d">SDA</text>
+
+  <circle cx="736" cy="292" r="4.5" fill="#e67e22" stroke="#555" stroke-width="1"/>
+  <text x="736" y="316" text-anchor="middle" class="pin-label-d">CS</text>
+
+  <circle cx="762" cy="292" r="4.5" fill="#8e44ad" stroke="#555" stroke-width="1"/>
+  <text x="762" y="316" text-anchor="middle" class="pin-label-d">DC</text>
+
+  <circle cx="788" cy="292" r="4.5" fill="#c8a415" stroke="#555" stroke-width="1"/>
+  <text x="788" y="316" text-anchor="middle" class="pin-label-d">RES</text>
+
+  <!-- ===== WIRES ===== -->
+  <!-- GND → GND (black) -->
+  <path d="M 344 128 Q 400 128, 440 115 Q 510 90, 560 140 Q 590 175, 595 250 Q 598 280, 632 292"
+        class="wire" stroke="#444" stroke-dasharray="none"/>
+
+  <!-- 3V3 → VDD (red) -->
+  <path d="M 344 158 Q 410 158, 460 138 Q 520 110, 568 160 Q 600 195, 610 260 Q 618 282, 658 292"
+        class="wire" stroke="#e53935"/>
+
+  <!-- D8 → SCK (blue) -->
+  <path d="M 344 228 Q 420 228, 480 210 Q 540 192, 580 230 Q 610 260, 650 280 Q 668 288, 684 292"
+        class="wire" stroke="#1e88e5"/>
+
+  <!-- D10 → SDA (green) -->
+  <path d="M 344 288 Q 420 288, 490 282 Q 560 276, 620 284 Q 670 288, 710 292"
+        class="wire" stroke="#43a047"/>
+
+  <!-- D7 → CS (orange) -->
+  <path d="M 344 198 Q 430 198, 490 195 Q 560 190, 600 220 Q 650 260, 700 280 Q 720 287, 736 292"
+        class="wire" stroke="#ef6c00"/>
+
+  <!-- D9 → DC (purple) -->
+  <path d="M 344 258 Q 430 258, 500 255 Q 570 252, 630 265 Q 700 278, 740 286 Q 752 290, 762 292"
+        class="wire" stroke="#9c27b0"/>
+
+  <!-- D30 → RES (yellow) -->
+  <path d="M 344 328 Q 430 328, 500 335 Q 570 342, 640 330 Q 720 316, 760 305 Q 778 298, 788 292"
+        class="wire" stroke="#c8a415"/>
+
+  <!-- ===== LEGEND TABLE ===== -->
+  <rect x="40" y="440" width="820" height="148" rx="8" fill="#fafafa" stroke="#e0e0e0" stroke-width="1"/>
+
+  <text x="450" y="462" text-anchor="middle" font-size="13" font-weight="bold" fill="#333" font-family="sans-serif">ピン接続表 / Pin Connection Table</text>
+
+  <!-- Table headers -->
+  <line x1="60" y1="470" x2="840" y2="470" stroke="#ccc" stroke-width="0.5"/>
+  <text x="80" y="485" class="legend-bold">Daisy</text>
+  <text x="150" y="485" class="legend-bold">OLED</text>
+  <text x="230" y="485" class="legend-bold">信号 / Signal</text>
+  <text x="390" y="485" class="legend-bold">色 / Wire</text>
+
+  <text x="500" y="485" class="legend-bold">Daisy</text>
+  <text x="570" y="485" class="legend-bold">OLED</text>
+  <text x="650" y="485" class="legend-bold">信号 / Signal</text>
+  <text x="810" y="485" class="legend-bold">色 / Wire</text>
+  <line x1="60" y1="490" x2="840" y2="490" stroke="#ddd" stroke-width="0.5"/>
+
+  <!-- Left column rows -->
+  <!-- GND -->
+  <text x="80" y="507" class="legend-text">GND</text>
+  <text x="150" y="507" class="legend-text">GND</text>
+  <text x="230" y="507" class="legend-text">グランド / Ground</text>
+  <rect x="390" y="497" width="26" height="13" rx="3" fill="#444"/>
+
+  <!-- 3V3 -->
+  <text x="80" y="527" class="legend-text">3V3</text>
+  <text x="150" y="527" class="legend-text">VDD</text>
+  <text x="230" y="527" class="legend-text">電源 / Power 3.3V</text>
+  <rect x="390" y="517" width="26" height="13" rx="3" fill="#e53935"/>
+
+  <!-- D8 -->
+  <text x="80" y="547" class="legend-text">D8</text>
+  <text x="150" y="547" class="legend-text">SCK</text>
+  <text x="230" y="547" class="legend-text">SPIクロック / SPI Clock</text>
+  <rect x="390" y="537" width="26" height="13" rx="3" fill="#1e88e5"/>
+
+  <!-- D10 -->
+  <text x="80" y="567" class="legend-text">D10</text>
+  <text x="150" y="567" class="legend-text">SDA</text>
+  <text x="230" y="567" class="legend-text">SPIデータ / MOSI</text>
+  <rect x="390" y="557" width="26" height="13" rx="3" fill="#43a047"/>
+
+  <!-- Right column rows -->
+  <!-- D7 -->
+  <text x="500" y="507" class="legend-text">D7</text>
+  <text x="570" y="507" class="legend-text">CS</text>
+  <text x="650" y="507" class="legend-text">チップセレクト / Chip Select</text>
+  <rect x="810" y="497" width="26" height="13" rx="3" fill="#ef6c00"/>
+
+  <!-- D9 -->
+  <text x="500" y="527" class="legend-text">D9</text>
+  <text x="570" y="527" class="legend-text">DC</text>
+  <text x="650" y="527" class="legend-text">データ/コマンド / Data/Cmd</text>
+  <rect x="810" y="517" width="26" height="13" rx="3" fill="#9c27b0"/>
+
+  <!-- D30 -->
+  <text x="500" y="547" class="legend-text">D30</text>
+  <text x="570" y="547" class="legend-text">RES</text>
+  <text x="650" y="547" class="legend-text">リセット / Reset</text>
+  <rect x="810" y="537" width="26" height="13" rx="3" fill="#c8a415"/>
+
+  <!-- Divider between columns -->
+  <line x1="475" y1="492" x2="475" y2="575" stroke="#ddd" stroke-width="0.5"/>
+
+</svg>

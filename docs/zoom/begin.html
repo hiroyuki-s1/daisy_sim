@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSPはじめの一歩 | ZOOM MS-50G+ を読む前に</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f7f4ec;
+  --paper: #fffdf8;
+  --ink: #1f2430;
+  --muted: #5f6575;
+  --line: #d7d1c2;
+  --accent: #d9481f;
+  --accent-2: #0b6e4f;
+  --accent-3: #145da0;
+  --accent-soft: #ffe1d6;
+  --panel: #f0ebe0;
+  --shadow: 0 20px 60px rgba(31, 36, 48, 0.08);
+  --radius: 22px;
+  --max: 1180px;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(212, 72, 31, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgba(20, 93, 160, 0.1), transparent 22%),
+    linear-gradient(180deg, #f7f4ec 0%, #f4efe5 45%, #efe8d9 100%);
+  color: var(--ink);
+  line-height: 1.75;
+}
+a { color: var(--accent-3); }
+a:hover { opacity: 0.85; }
+.wrap { width: min(var(--max), calc(100% - 32px)); margin: 0 auto; }
+.hero {
+  padding: 40px 0 24px;
+}
+.hero-card {
+  background: linear-gradient(135deg, rgba(255,253,248,0.96), rgba(255,247,236,0.96));
+  border: 1px solid rgba(215, 209, 194, 0.9);
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.hero-top {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 28px;
+  padding: 36px;
+}
+.eyebrow {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.03em;
+}
+h1 {
+  margin-top: 16px;
+  font-size: clamp(2rem, 5vw, 4.3rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+.hero p.lead {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 1.08rem;
+  max-width: 66ch;
+}
+.hero-actions {
+  margin-top: 22px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.btn.primary {
+  background: var(--ink);
+  color: #fff;
+}
+.btn.secondary {
+  border-color: var(--line);
+  color: var(--ink);
+  background: rgba(255,255,255,0.6);
+}
+.hero-note {
+  margin-top: 16px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+.hero-diagram {
+  background: linear-gradient(180deg, rgba(31,36,48,0.96), rgba(18,22,31,0.98));
+  border-radius: 24px;
+  padding: 20px;
+  color: #f1f4f8;
+  position: relative;
+  overflow: hidden;
+}
+.hero-diagram::after {
+  content: "";
+  position: absolute;
+  inset: auto -80px -80px auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(217,72,31,0.5), transparent 68%);
+}
+.hero-diagram h2 {
+  font-size: 1rem;
+  margin-bottom: 14px;
+  color: #ffb199;
+}
+.signal-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+.signal-box {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.signal-box strong {
+  display: block;
+  font-size: 0.86rem;
+  color: #fff;
+}
+.signal-box span {
+  display: block;
+  margin-top: 6px;
+  color: #cfd8e3;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+.hero-bottom {
+  border-top: 1px solid var(--line);
+  background: rgba(240, 235, 224, 0.72);
+  padding: 18px 36px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.metric {
+  padding-right: 12px;
+}
+.metric strong {
+  font-size: 1.6rem;
+  color: var(--accent);
+  display: block;
+}
+.metric span {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+section {
+  padding: 28px 0;
+}
+.section-head {
+  margin-bottom: 16px;
+}
+.section-kicker {
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+h2.section-title {
+  font-size: clamp(1.55rem, 3.1vw, 2.6rem);
+  line-height: 1.15;
+  margin-top: 8px;
+}
+.section-intro {
+  margin-top: 10px;
+  color: var(--muted);
+  max-width: 72ch;
+}
+.grid-2,
+.grid-3,
+.grid-4 {
+  display: grid;
+  gap: 18px;
+}
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.card {
+  background: rgba(255,253,248,0.86);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: var(--shadow);
+}
+.card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+}
+.card p,
+.card li,
+.card td,
+.card th { font-size: 0.97rem; }
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+.course-card {
+  background: rgba(255,253,248,0.86);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: var(--shadow);
+}
+.course-card h3 { margin-bottom: 10px; }
+.course-card p { color: var(--muted); }
+.course-links {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.course-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.course-link:hover { opacity: 0.9; }
+.chip {
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+.diagram-panel {
+  padding: 20px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #fffef9, #f4efe3);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.caption {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.step-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+.step {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.step-num {
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  background: var(--ink);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+.table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+th, td {
+  text-align: left;
+  padding: 13px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+th {
+  color: var(--accent-3);
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.equation {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: #1f2430;
+  color: #f8fbff;
+  font-family: Consolas, Monaco, monospace;
+  overflow-x: auto;
+}
+.mini {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.demo-controls {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+.control {
+  display: grid;
+  grid-template-columns: 180px 1fr 70px;
+  gap: 14px;
+  align-items: center;
+}
+.control label {
+  font-weight: 700;
+}
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.demo-stage {
+  margin-top: 16px;
+  border-radius: 22px;
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 16px;
+}
+.legend {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.dot.orange { background: var(--accent); }
+.dot.blue { background: var(--accent-3); }
+.dot.green { background: var(--accent-2); }
+.callout {
+  margin-top: 16px;
+  border-left: 4px solid var(--accent);
+  padding: 14px 16px;
+  background: rgba(217,72,31,0.08);
+  border-radius: 0 16px 16px 0;
+}
+.footer {
+  padding: 28px 0 48px;
+}
+.footer-card {
+  border-radius: 24px;
+  background: #181c25;
+  color: #edf2f7;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+.footer-card h2 { font-size: 1.6rem; }
+.footer-card p,
+.footer-card li { color: #c8d2df; }
+.footer-card ol,
+.footer-card ul { margin-left: 20px; margin-top: 12px; }
+.sources {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+}
+.source-item {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+svg { width: 100%; height: auto; }
+@media (max-width: 980px) {
+  .hero-top,
+  .grid-2,
+  .grid-3,
+  .grid-4,
+  .course-grid,
+  .hero-bottom {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 720px) {
+  .hero-top { padding: 22px; }
+  .hero-bottom { padding: 18px 22px; }
+  .control {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .card,
+  .diagram-panel,
+  .footer-card { padding: 18px; }
+}
+</style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap hero-card">
+      <div class="hero-top">
+        <div>
+          <span class="eyebrow">DSP 未経験者向けの導入ページ</span>
+          <h1>ZOOM の解析ページを読む前に、DSP を音の直感でつかむ。</h1>
+          <p class="lead">このページは、逆アセンブリやフィルタ係数の話に入る前に「そもそも DSP は何をしているのか」を把握するための入門編です。数式を最小限にして、ギターエフェクトの実感に寄せて説明します。</p>
+          <div class="hero-actions">
+            <a class="btn primary" href="index.html">解析ページへ進む</a>
+            <a class="btn secondary" href="#sampling">まずサンプリングを見る</a>
+            <a class="btn secondary" href="fundamentals-sampling.html">基礎1 サンプリング</a>
+            <a class="btn secondary" href="fundamentals-filters.html">基礎2 フィルタ</a>
+            <a class="btn secondary" href="fundamentals-timefx.html">基礎3 時間系</a>
+            <a class="btn secondary" href="comp-cab.html">Comp と Cabinet の中級編</a>
+            <a class="btn secondary" href="advanced-zoom-dsp.html">上級編</a>
+            <a class="btn secondary" href="advanced-amp.html">上級 Amp</a>
+            <a class="btn secondary" href="advanced-drive.html">上級 Drive</a>
+            <a class="btn secondary" href="advanced-reverb.html">上級 Reverb</a>
+            <a class="btn secondary" href="advanced-pitch.html">上級 Pitch</a>
+            <a class="btn secondary" href="dsp-lab.html">体験ラボ</a>
+          </div>
+          <p class="hero-note">対象: DSP 未経験、でも ZOOM MS-50G+ の effect algorithm documentation を読める状態になりたい人。</p>
+        </div>
+        <div class="hero-diagram">
+          <h2>音が pedal の中で起きていること</h2>
+          <svg viewBox="0 0 520 280" aria-label="音声信号がDSP処理される流れ">
+            <defs>
+              <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#ffb199"/>
+                <stop offset="100%" stop-color="#ffd9b3"/>
+              </linearGradient>
+              <linearGradient id="g2" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#74c69d"/>
+                <stop offset="100%" stop-color="#d8f3dc"/>
+              </linearGradient>
+              <linearGradient id="g3" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#6ea8fe"/>
+                <stop offset="100%" stop-color="#d0ebff"/>
+              </linearGradient>
+            </defs>
+            <rect x="18" y="42" width="120" height="58" rx="18" fill="url(#g1)"/>
+            <rect x="198" y="42" width="124" height="58" rx="18" fill="url(#g2)"/>
+            <rect x="384" y="42" width="118" height="58" rx="18" fill="url(#g3)"/>
+            <text x="78" y="78" text-anchor="middle" fill="#1c1f27" font-size="19" font-weight="700">ADC</text>
+            <text x="260" y="78" text-anchor="middle" fill="#103321" font-size="19" font-weight="700">DSP</text>
+            <text x="443" y="78" text-anchor="middle" fill="#10263d" font-size="19" font-weight="700">DAC</text>
+            <path d="M140 71 H188" stroke="#f1f4f8" stroke-width="4" marker-end="url(#arrow)"/>
+            <path d="M324 71 H374" stroke="#f1f4f8" stroke-width="4" marker-end="url(#arrow)"/>
+            <defs>
+              <marker id="arrow" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+                <path d="M0,0 L0,8 L8,4 z" fill="#f1f4f8"/>
+              </marker>
+            </defs>
+            <path d="M25 188 C55 130, 95 246, 125 188 S195 130, 225 188 S295 246, 325 188 S395 130, 425 188 S495 246, 515 188" fill="none" stroke="#ffb199" stroke-width="5"/>
+            <g fill="#74c69d">
+              <circle cx="44" cy="188" r="5"/>
+              <circle cx="74" cy="149" r="5"/>
+              <circle cx="104" cy="208" r="5"/>
+              <circle cx="134" cy="200" r="5"/>
+              <circle cx="164" cy="155" r="5"/>
+              <circle cx="194" cy="182" r="5"/>
+              <circle cx="224" cy="220" r="5"/>
+              <circle cx="254" cy="170" r="5"/>
+              <circle cx="284" cy="156" r="5"/>
+              <circle cx="314" cy="194" r="5"/>
+              <circle cx="344" cy="219" r="5"/>
+              <circle cx="374" cy="176" r="5"/>
+              <circle cx="404" cy="151" r="5"/>
+              <circle cx="434" cy="191" r="5"/>
+              <circle cx="464" cy="219" r="5"/>
+            </g>
+            <text x="20" y="126" fill="#cfd8e3" font-size="14">アナログ波形</text>
+            <text x="214" y="126" fill="#cfd8e3" font-size="14">数値列として処理</text>
+            <text x="390" y="126" fill="#cfd8e3" font-size="14">また音になる</text>
+          </svg>
+          <div class="signal-row">
+            <div class="signal-box">
+              <strong>ADC</strong>
+              <span>音の波を一定間隔で数値化</span>
+            </div>
+            <div class="signal-box">
+              <strong>Buffer</strong>
+              <span>少しだけためて順番に読む</span>
+            </div>
+            <div class="signal-box">
+              <strong>Algorithm</strong>
+              <span>係数と状態を使って加工</span>
+            </div>
+            <div class="signal-box">
+              <strong>DAC</strong>
+              <span>加工後の数列を再び音へ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-bottom">
+        <div class="metric"><strong>1</strong><span>音はまず「時間に沿った数列」になる</span></div>
+        <div class="metric"><strong>2</strong><span>多くのエフェクトは filter と delay の組み合わせ</span></div>
+        <div class="metric"><strong>3</strong><span>cab は impulse response で理解しやすい</span></div>
+        <div class="metric"><strong>4</strong><span>index.html の DSP% は計算コストの重さの目安</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="wrap">
+      <div class="section-head">
+        <div class="section-kicker">Course Map</div>
+        <h2 class="section-title">この教材セットは、初級から上級までを分割して読む構成です。</h2>
+        <p class="section-intro">1ページで全部を詰めると逆に理解しづらくなるので、役割ごとにページを分けています。まずは基礎3本、そのあと代表的 effect、中身の構造、最後に体験ラボ、という順番が自然です。</p>
+      </div>
+      <div class="course-grid">
+        <article class="course-card">
+          <h3>初級</h3>
+          <p>アナログ音が数列になるところから始めて、sample rate、bit depth、Nyquist、aliasing を整理します。</p>
+          <div class="course-links">
+            <a class="course-link" href="fundamentals-sampling.html">サンプリングと量子化</a>
+          </div>
+        </article>
+        <article class="course-card">
+          <h3>初級+</h3>
+          <p>DSP の中心である filter を時間領域と周波数領域で理解し、FIR / IIR の役割差を掴みます。</p>
+          <div class="course-links">
+            <a class="course-link" href="fundamentals-filters.html">フィルタと周波数応答</a>
+          </div>
+        </article>
+        <article class="course-card">
+          <h3>中級入口</h3>
+          <p>delay, chorus, flanger, reverb を、buffer と modulation の連続体として学びます。</p>
+          <div class="course-links">
+            <a class="course-link" href="fundamentals-timefx.html">時間系エフェクト</a>
+          </div>
+        </article>
+        <article class="course-card">
+          <h3>中級</h3>
+          <p>Comp と Cabinet を題材に、envelope 制御と IR / FIR 処理を effect 単位で解剖します。</p>
+          <div class="course-links">
+            <a class="course-link" href="comp-cab.html">Comp と Cabinet</a>
+          </div>
+        </article>
+        <article class="course-card">
+          <h3>上級</h3>
+          <p>ZD2 の構造、DSP load、係数テーブル、TI C6000 実装らしい読み方まで踏み込みます。</p>
+          <div class="course-links">
+            <a class="course-link" href="advanced-zoom-dsp.html">ZD2 と TI C6000 の読み方</a>
+            <a class="course-link" href="advanced-amp.html">Amp</a>
+            <a class="course-link" href="advanced-drive.html">Drive</a>
+            <a class="course-link" href="advanced-reverb.html">Reverb</a>
+            <a class="course-link" href="advanced-pitch.html">Pitch</a>
+          </div>
+        </article>
+        <article class="course-card">
+          <h3>体験</h3>
+          <p>ブラウザ上で waveshaper、compressor、delay、cab sim の変化を見て聴きます。</p>
+          <div class="course-links">
+            <a class="course-link" href="dsp-lab.html">DSP 体験ラボ</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <div class="section-head">
+        <div class="section-kicker">What DSP Means</div>
+        <h2 class="section-title">DSP は「音を数にして、数のまま加工して、また音に戻す」ことです。</h2>
+        <p class="section-intro">難しそうに見えますが、やっていることをかなり乱暴に言うと、毎サンプルごとに「今の値」と「少し前の値」を見て、次の値を計算しているだけです。ZOOM の pedal はこの計算を非常に高速に繰り返しています。</p>
+      </div>
+      <div class="grid-3">
+        <article class="card">
+          <h3>Gain</h3>
+          <p>いちばん簡単な DSP は音量変更です。各サンプルに 0.5 を掛ければ半分、2.0 を掛ければ 2 倍です。drive の入口にもまずこの考え方があります。</p>
+        </article>
+        <article class="card">
+          <h3>Filter</h3>
+          <p>低音を通して高音を削る、高音だけを残す、特定帯域だけ持ち上げる。これが filter です。EQ、tone、wah、cab の基礎になります。</p>
+        </article>
+        <article class="card">
+          <h3>Time</h3>
+          <p>少し前の音を覚えておいて後で混ぜる。これが delay です。短く使えば chorus や flanger、長く使えば echo、たくさん重ねると reverb に近づきます。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="wrap" id="sampling">
+      <div class="section-head">
+        <div class="section-kicker">Sampling</div>
+        <h2 class="section-title">最初の壁はサンプリングです。音の波を、一定間隔の点に切り分けます。</h2>
+        <p class="section-intro">Shannon のサンプリング定理の要点は、「元の音に含まれる最高周波数の 2 倍より速くサンプリングすれば、理論上は情報を取り逃しにくい」ということです。音楽用途で 44.1 kHz や 48 kHz が使われるのはこの考え方に基づきます。</p>
+      </div>
+      <div class="grid-2">
+        <div class="diagram-panel">
+          <svg viewBox="0 0 680 260" aria-label="サンプリングの模式図">
+            <line x1="32" y1="130" x2="648" y2="130" stroke="#bdb5a4" stroke-width="2"/>
+            <path d="M32 130 C60 70, 95 70, 122 130 S185 190, 212 130 S275 70, 302 130 S365 190, 392 130 S455 70, 482 130 S545 190, 572 130 S625 70, 648 130" fill="none" stroke="#d9481f" stroke-width="5"/>
+            <g fill="#145da0">
+              <circle cx="50" cy="102" r="6"/>
+              <circle cx="104" cy="112" r="6"/>
+              <circle cx="158" cy="176" r="6"/>
+              <circle cx="212" cy="130" r="6"/>
+              <circle cx="266" cy="82" r="6"/>
+              <circle cx="320" cy="149" r="6"/>
+              <circle cx="374" cy="180" r="6"/>
+              <circle cx="428" cy="96" r="6"/>
+              <circle cx="482" cy="130" r="6"/>
+              <circle cx="536" cy="171" r="6"/>
+              <circle cx="590" cy="86" r="6"/>
+            </g>
+            <g stroke="#8a8374" stroke-width="2" stroke-dasharray="4 7">
+              <line x1="50" y1="42" x2="50" y2="222"/>
+              <line x1="104" y1="42" x2="104" y2="222"/>
+              <line x1="158" y1="42" x2="158" y2="222"/>
+              <line x1="212" y1="42" x2="212" y2="222"/>
+              <line x1="266" y1="42" x2="266" y2="222"/>
+              <line x1="320" y1="42" x2="320" y2="222"/>
+              <line x1="374" y1="42" x2="374" y2="222"/>
+              <line x1="428" y1="42" x2="428" y2="222"/>
+              <line x1="482" y1="42" x2="482" y2="222"/>
+              <line x1="536" y1="42" x2="536" y2="222"/>
+              <line x1="590" y1="42" x2="590" y2="222"/>
+            </g>
+            <text x="32" y="28" fill="#5f6575" font-size="15">赤: 元のアナログ波形</text>
+            <text x="32" y="50" fill="#5f6575" font-size="15">青: 一定間隔で読んだサンプル</text>
+          </svg>
+          <p class="caption">点が十分に細かければ、元の波形の性質をかなり保てます。粗すぎると見間違いが起きます。</p>
+        </div>
+        <article class="card">
+          <h3>この時点で重要なのは 3 つだけです</h3>
+          <div class="step-list">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div>
+                <strong>sample rate</strong>
+                <p>1 秒あたりに何回測るか。48 kHz なら 1 秒に 48,000 回です。</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div>
+                <strong>bit depth</strong>
+                <p>1 回の測定値をどれくらい細かく表すか。粗いと量子化誤差が増えます。</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div>
+                <strong>aliasing</strong>
+                <p>高すぎる周波数成分が、別の低い音として折り返して見えてしまう現象です。distortion や waveshaping で特に問題になります。</p>
+              </div>
+            </div>
+          </div>
+          <div class="equation">必要条件の目安: sample rate &gt; 2 x 扱いたい最高周波数</div>
+          <p class="mini">厳密には帯域制限や再構成の条件がありますが、初学者向けにはこの理解で十分です。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <div class="section-head">
+        <div class="section-kicker">Interactive Demo</div>
+        <h2 class="section-title">サンプル点が粗いと、別の波に見えてしまう。</h2>
+        <p class="section-intro">下のスライダを動かしてください。オレンジが元の波、青い点がサンプル、緑が「そのサンプル点だけを見るとこうも見える」という低い alias のイメージです。</p>
+      </div>
+      <div class="card">
+        <div class="demo-controls">
+          <div class="control">
+            <label for="signalFreq">元の波の細かさ</label>
+            <input id="signalFreq" type="range" min="2" max="18" value="11">
+            <strong id="signalFreqValue">11</strong>
+          </div>
+          <div class="control">
+            <label for="sampleRate">1画面あたりのサンプル数</label>
+            <input id="sampleRate" type="range" min="6" max="26" value="12">
+            <strong id="sampleRateValue">12</strong>
+          </div>
+        </div>
+        <div class="demo-stage">
+          <svg id="samplingDemo" viewBox="0 0 900 280" aria-label="エイリアシングの可視化"></svg>
+          <div class="legend">
+            <span><span class="dot orange"></span>元の波</span>
+            <span><span class="dot blue"></span>サンプル点</span>
+            <span><span class="dot green"></span>低く見えてしまう alias</span>
+          </div>
+        </div>
+        <div class="callout" id="aliasMessage">sample が十分でないと、見た目が別の低い波に化けます。これが aliasing の直感です。</div>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <div class="section-head">
+        <div class="section-kicker">Filter Basics</div>
+        <h2 class="section-title">filter は「どの帯域を通し、どの帯域を減らすか」を決める装置です。</h2>
+        <p class="section-intro">ギター pedal の tone, EQ, wah, cab, de-esser 的な動きは、だいたい filter の仲間です。コードで見ると、今のサンプルと過去サンプルの重み付き和として書かれることが多いです。</p>
+      </div>
+      <div class="grid-2">
+        <article class="card">
+          <h3>最小のイメージ</h3>
+          <p>入力をそのまま通すのではなく、少し前の値も混ぜると、なめらかになったり、逆に特定の帯域が強調されたりします。これがデジタルフィルタの入口です。</p>
+          <div class="equation">y[n] = a x[n] + b x[n-1] + c y[n-1]</div>
+          <p class="mini">x は入力、y は出力、n は現在サンプル。過去の入力や出力を混ぜることで周波数特性が決まります。</p>
+        </article>
+        <div class="diagram-panel">
+          <svg viewBox="0 0 720 250" aria-label="FIRとIIRの直感図">
+            <rect x="28" y="34" width="300" height="182" rx="22" fill="#fff6ef" stroke="#e7b79f"/>
+            <rect x="392" y="34" width="300" height="182" rx="22" fill="#eef8f4" stroke="#a8d8c1"/>
+            <text x="56" y="68" fill="#d9481f" font-size="24" font-weight="700">FIR</text>
+            <text x="56" y="94" fill="#5f6575" font-size="15">過去の入力だけを見る</text>
+            <text x="420" y="68" fill="#0b6e4f" font-size="24" font-weight="700">IIR</text>
+            <text x="420" y="94" fill="#5f6575" font-size="15">過去の出力も戻して使う</text>
+            <rect x="64" y="128" width="54" height="34" rx="10" fill="#fff" stroke="#d7d1c2"/>
+            <rect x="132" y="128" width="54" height="34" rx="10" fill="#fff" stroke="#d7d1c2"/>
+            <rect x="200" y="128" width="54" height="34" rx="10" fill="#fff" stroke="#d7d1c2"/>
+            <path d="M118 145 H130 M186 145 H198" stroke="#1f2430" stroke-width="3" marker-end="url(#arrow2)"/>
+            <circle cx="282" cy="145" r="18" fill="#d9481f"/>
+            <text x="282" y="151" text-anchor="middle" fill="#fff" font-size="18" font-weight="700">+</text>
+            <path d="M254 145 H264" stroke="#1f2430" stroke-width="3" marker-end="url(#arrow2)"/>
+            <text x="64" y="188" fill="#5f6575" font-size="14">遅延した入力を足し合わせる</text>
+            <rect x="428" y="128" width="54" height="34" rx="10" fill="#fff" stroke="#d7d1c2"/>
+            <rect x="496" y="128" width="54" height="34" rx="10" fill="#fff" stroke="#d7d1c2"/>
+            <circle cx="618" cy="145" r="18" fill="#0b6e4f"/>
+            <text x="618" y="151" text-anchor="middle" fill="#fff" font-size="18" font-weight="700">+</text>
+            <path d="M482 145 H494 M550 145 H600" stroke="#1f2430" stroke-width="3" marker-end="url(#arrow2)"/>
+            <path d="M618 163 C618 198, 500 204, 500 168" fill="none" stroke="#0b6e4f" stroke-width="3" stroke-dasharray="6 6" marker-end="url(#arrow2)"/>
+            <text x="428" y="188" fill="#5f6575" font-size="14">出力の一部を戻すので効率が良い</text>
+            <defs>
+              <marker id="arrow2" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+                <path d="M0,0 L0,8 L8,4 z" fill="#1f2430"/>
+              </marker>
+            </defs>
+          </svg>
+          <p class="caption">初心者向けには、FIR は「入力だけを見る」、IIR は「出力も記憶する」と覚えると十分です。</p>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip">Low-pass: 高音を落とす</span>
+        <span class="chip">High-pass: 低音を落とす</span>
+        <span class="chip">Band-pass: 一部だけ通す</span>
+        <span class="chip">Shelf / EQ: ある帯域を持ち上げる</span>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <div class="section-head">
+        <div class="section-kicker">Delay And Reverb</div>
+        <h2 class="section-title">delay は「過去の音をあとで返す」。reverb は「たくさんの小さな delay の塊」と考えると理解しやすいです。</h2>
+        <p class="section-intro">外部資料でも、デジタル delay は buffer に音をためて後で読み出すもの、reverb は複数の delay line と減衰で空間反射らしさを作るものとして説明されています。ZOOM の解析メモでも delay/reverb はまさにその構造でした。</p>
+      </div>
+      <div class="grid-2">
+        <div class="diagram-panel">
+          <svg viewBox="0 0 720 280" aria-label="delay と reverb の直感図">
+            <rect x="32" y="38" width="656" height="82" rx="22" fill="#fff" stroke="#d7d1c2"/>
+            <text x="56" y="70" fill="#1f2430" font-size="22" font-weight="700">Delay</text>
+            <rect x="160" y="56" width="110" height="46" rx="16" fill="#ffe1d6" stroke="#e7b79f"/>
+            <rect x="330" y="56" width="120" height="46" rx="16" fill="#eef8f4" stroke="#a8d8c1"/>
+            <rect x="510" y="56" width="112" height="46" rx="16" fill="#e7f1ff" stroke="#a9c8ea"/>
+            <text x="215" y="84" text-anchor="middle" fill="#1f2430" font-size="17" font-weight="700">入力</text>
+            <text x="390" y="84" text-anchor="middle" fill="#1f2430" font-size="17" font-weight="700">buffer</text>
+            <text x="566" y="84" text-anchor="middle" fill="#1f2430" font-size="17" font-weight="700">出力</text>
+            <path d="M270 79 H320 M450 79 H500" stroke="#1f2430" stroke-width="3" marker-end="url(#arrow3)"/>
+            <path d="M566 104 C566 134, 390 144, 390 108" fill="none" stroke="#d9481f" stroke-width="3" stroke-dasharray="8 8" marker-end="url(#arrow3)"/>
+            <text x="570" y="142" fill="#5f6575" font-size="14">feedback</text>
+            <rect x="32" y="150" width="656" height="98" rx="22" fill="#fff" stroke="#d7d1c2"/>
+            <text x="56" y="184" fill="#1f2430" font-size="22" font-weight="700">Reverb</text>
+            <rect x="160" y="170" width="88" height="34" rx="12" fill="#eef8f4" stroke="#a8d8c1"/>
+            <rect x="280" y="170" width="88" height="34" rx="12" fill="#eef8f4" stroke="#a8d8c1"/>
+            <rect x="400" y="170" width="88" height="34" rx="12" fill="#eef8f4" stroke="#a8d8c1"/>
+            <rect x="520" y="170" width="88" height="34" rx="12" fill="#eef8f4" stroke="#a8d8c1"/>
+            <text x="204" y="191" text-anchor="middle" fill="#103321" font-size="14" font-weight="700">delay A</text>
+            <text x="324" y="191" text-anchor="middle" fill="#103321" font-size="14" font-weight="700">delay B</text>
+            <text x="444" y="191" text-anchor="middle" fill="#103321" font-size="14" font-weight="700">delay C</text>
+            <text x="564" y="191" text-anchor="middle" fill="#103321" font-size="14" font-weight="700">delay D</text>
+            <path d="M110 188 H152 M248 188 H272 M368 188 H392 M488 188 H512 M608 188 H640" stroke="#1f2430" stroke-width="3" marker-end="url(#arrow3)"/>
+            <path d="M324 204 C324 232, 204 232, 204 204" fill="none" stroke="#145da0" stroke-width="2" stroke-dasharray="6 6"/>
+            <path d="M564 204 C564 236, 444 236, 444 204" fill="none" stroke="#145da0" stroke-width="2" stroke-dasharray="6 6"/>
+            <text x="160" y="226" fill="#5f6575" font-size="14">複数の短い反射が混ざると「空間っぽさ」になる</text>
+            <defs>
+              <marker id="arrow3" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+                <path d="M0,0 L0,8 L8,4 z" fill="#1f2430"/>
+              </marker>
+            </defs>
+          </svg>
+          <p class="caption">Delay は一本の時間線、reverb は多数の時間線のネットワーク、とイメージすると見通しが良くなります。</p>
+        </div>
+        <article class="card">
+          <h3>ギター向けに言い換えると</h3>
+          <div class="step-list">
+            <div class="step">
+              <div class="step-num">A</div>
+              <div>
+                <strong>slapback</strong>
+                <p>かなり短い delay。厚みが出る。</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">B</div>
+              <div>
+                <strong>chorus / flanger</strong>
+                <p>もっと短い delay を LFO で揺らす。だから「ピッチが揺れる感じ」が生まれる。</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">C</div>
+              <div>
+                <strong>reverb</strong>
+                <p>単発の反射ではなく、壁や床や天井で何度も反射した尾を作る。アルゴリズム的には多段 delay と filter の組み合わせで作ることが多い。</p>
+              </div>
+            </div>
+          </div>
+          <div class="callout">ZOOM の解析メモでは、delay 系は buffer と feedback、reverb 系は FDN や comb/allpass の構成として整理されていました。初学者はまず「たくさんの delay が空間を作る」と覚えれば十分です。</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <div class="section-head">
+        <div class="section-kicker">Impulse Response</div>
+        <h2 class="section-title">cab simulation が急に分かりやすくなる鍵は、impulse response です。</h2>
+        <p class="section-intro">impulse response は、「その装置に一瞬だけパチッと音を入れたら、どう返ってくるか」を記録したものです。線形時不変の系なら、その応答だけで振る舞いをかなり記述できます。</p>
+      </div>
+      <div class="grid-2">
+        <article class="card">
+          <h3>キャビネット IR の直感</h3>
+          <p>ギターアンプの speaker cabinet は、周波数ごとに通りやすさが違い、箱鳴りやマイク位置でも音が変わります。その「通り方」を impulse response として測っておき、dry な音に畳み込みすると cab を通したような音になります。</p>
+          <div class="equation">output = input (*) impulse response</div>
+          <p class="mini">(*) は convolution。難しそうですが、実装の感覚としては「過去サンプルに IR の係数を掛けて足し合わせる」です。</p>
+        </article>
+        <div class="diagram-panel">
+          <svg viewBox="0 0 720 260" aria-label="impulse response のイメージ図">
+            <rect x="30" y="38" width="138" height="176" rx="22" fill="#fff" stroke="#d7d1c2"/>
+            <rect x="292" y="38" width="138" height="176" rx="22" fill="#fff" stroke="#d7d1c2"/>
+            <rect x="552" y="38" width="138" height="176" rx="22" fill="#fff" stroke="#d7d1c2"/>
+            <text x="99" y="68" text-anchor="middle" fill="#1f2430" font-size="20" font-weight="700">Impulse</text>
+            <text x="361" y="68" text-anchor="middle" fill="#1f2430" font-size="20" font-weight="700">Cab IR</text>
+            <text x="621" y="68" text-anchor="middle" fill="#1f2430" font-size="20" font-weight="700">Result</text>
+            <line x1="58" y1="174" x2="140" y2="174" stroke="#bdb5a4" stroke-width="2"/>
+            <rect x="93" y="106" width="12" height="68" rx="6" fill="#d9481f"/>
+            <line x1="320" y1="174" x2="402" y2="174" stroke="#bdb5a4" stroke-width="2"/>
+            <path d="M324 144 L332 136 L340 150 L348 121 L356 157 L364 138 L372 164 L380 148 L388 169 L396 156" fill="none" stroke="#145da0" stroke-width="5" stroke-linecap="round"/>
+            <line x1="580" y1="174" x2="662" y2="174" stroke="#bdb5a4" stroke-width="2"/>
+            <path d="M580 170 C590 158, 598 135, 607 106 S628 156, 638 138 S655 162, 662 150" fill="none" stroke="#0b6e4f" stroke-width="5" stroke-linecap="round"/>
+            <path d="M170 126 H282 M432 126 H544" stroke="#1f2430" stroke-width="3" marker-end="url(#arrow4)"/>
+            <text x="224" y="112" text-anchor="middle" fill="#5f6575" font-size="14">convolution</text>
+            <text x="30" y="234" fill="#5f6575" font-size="14">一瞬の入力</text>
+            <text x="292" y="234" fill="#5f6575" font-size="14">箱とマイクの癖</text>
+            <text x="552" y="234" fill="#5f6575" font-size="14">cab を通ったような応答</text>
+            <defs>
+              <marker id="arrow4" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+                <path d="M0,0 L0,8 L8,4 z" fill="#1f2430"/>
+              </marker>
+            </defs>
+          </svg>
+          <p class="caption">cab sim を FIR 的な処理で実現する、という話の直感図です。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap">
+      <div class="section-head">
+        <div class="section-kicker">From Basics To ZOOM</div>
+        <h2 class="section-title">この理解があると、ZOOM の解析ページで何を見ているかが急に読めるようになります。</h2>
+      </div>
+      <div class="table-wrap card">
+        <table>
+          <thead>
+            <tr>
+              <th>解析ページで見えるもの</th>
+              <th>初心者向けの意味</th>
+              <th>DSP の中身のイメージ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Dynamics / Comp / Gate</td>
+              <td>大きすぎる音を抑えたり、弱い音を持ち上げたりする</td>
+              <td>envelope follower + gain control + tone shaping</td>
+            </tr>
+            <tr>
+              <td>Filter / EQ / Wah</td>
+              <td>周波数ごとの通し方を変える</td>
+              <td>IIR / biquad / shelving / resonant filter</td>
+            </tr>
+            <tr>
+              <td>Drive / Amp</td>
+              <td>歪ませる、アンプらしい応答にする</td>
+              <td>gain + nonlinear waveshaping + tone stack + cabinet 的補正</td>
+            </tr>
+            <tr>
+              <td>Cabinet</td>
+              <td>スピーカー箱とマイクの癖を再現する</td>
+              <td>impulse response / FIR に近い考え方</td>
+            </tr>
+            <tr>
+              <td>Modulation</td>
+              <td>揺れ、うねり、広がりを加える</td>
+              <td>short delay + LFO + filter</td>
+            </tr>
+            <tr>
+              <td>Delay / Reverb</td>
+              <td>反射、空間、余韻を作る</td>
+              <td>buffer, feedback, multi-delay network</td>
+            </tr>
+            <tr>
+              <td>DSP %</td>
+              <td>その effect が pedal の計算資源をどれくらい食うか</td>
+              <td>フィルタ数、delay line 長、nonlinear 処理、補間、内部状態の多さ</td>
+            </tr>
+            <tr>
+              <td>coefficients / tables</td>
+              <td>つまみ位置に応じた音の変わり方の定数表</td>
+              <td>tone や attack, decay, cutoff などを数値で管理</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="grid-2" style="margin-top:18px;">
+        <article class="card">
+          <h3>ZOOM MS-50G+ の解析文書で特に大事な見方</h3>
+          <p>このリポジトリの解析では、ZD2 ファイルの中に parameter 情報、説明文、そして TI C6000 用の DSP コードが入っています。つまり pedal は effect ごとに別のアルゴリズムをロードしている、と見なせます。</p>
+          <div class="chips">
+            <span class="chip">ZD2 = effect パッケージ</span>
+            <span class="chip">DATA = DSP コード</span>
+            <span class="chip">PRME = パラメータ説明</span>
+            <span class="chip">INFO = DSP load 情報</span>
+          </div>
+        </article>
+        <article class="card">
+          <h3>読む順番のおすすめ</h3>
+          <div class="step-list">
+            <div class="step"><div class="step-num">1</div><div><strong>Comp</strong><p>envelope と gain の考え方が分かりやすい。</p></div></div>
+            <div class="step"><div class="step-num">2</div><div><strong>Delay</strong><p>buffer と feedback の直感がそのまま使える。</p></div></div>
+            <div class="step"><div class="step-num">3</div><div><strong>Cabinet</strong><p>IR / filter の理解が固まる。</p></div></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="wrap footer">
+      <div class="footer-card">
+        <h2>参考にした外部情報</h2>
+        <p>このページの説明は、このリポジトリ内の解析メモに加えて、サンプリング、デジタルフィルタ、delay、reverb、impulse response の基礎説明を参照して噛み砕いています。以下は要点確認に使った入り口です。</p>
+        <div class="sources">
+          <div class="source-item">
+            <strong>Sampling / Nyquist-Shannon</strong>
+            <p>Wikipedia: Sampling (signal processing), Nyquist-Shannon sampling theorem</p>
+          </div>
+          <div class="source-item">
+            <strong>Digital Filter / IIR</strong>
+            <p>Wikipedia: Digital filter, Infinite impulse response</p>
+          </div>
+          <div class="source-item">
+            <strong>Delay / Reverb / Impulse Response</strong>
+            <p>Wikipedia: Delay (audio effect), Reverb effect, Impulse response</p>
+          </div>
+          <div class="source-item">
+            <strong>このリポジトリ内メモ</strong>
+            <p>ZOOM の reverse engineering と effect architecture の要約: zoom-ms50gplus.md</p>
+          </div>
+        </div>
+        <ol>
+          <li>次は index.html の sidebar から Dynamics, Delay, Cabinet を順に読むと、DSP の見え方がかなり安定します。</li>
+          <li>もっと踏み込むなら、「biquad」「convolution」「FDN」を個別に調べると解析文書の密度に追いつきやすいです。</li>
+        </ol>
+        <p style="margin-top:16px;"><a href="comp-cab.html" style="color:#9bd1ff;">Comp と Cabinet を題材にした中級編へ進む</a></p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  (function() {
+    const signalFreq = document.getElementById('signalFreq');
+    const sampleRate = document.getElementById('sampleRate');
+    const signalFreqValue = document.getElementById('signalFreqValue');
+    const sampleRateValue = document.getElementById('sampleRateValue');
+    const svg = document.getElementById('samplingDemo');
+    const aliasMessage = document.getElementById('aliasMessage');
+
+    function polyline(points, color, width) {
+      return '<polyline fill="none" stroke="' + color + '" stroke-width="' + width + '" stroke-linejoin="round" stroke-linecap="round" points="' + points.map(function(p) { return p[0].toFixed(2) + ',' + p[1].toFixed(2); }).join(' ') + '"></polyline>';
+    }
+
+    function circle(x, y, r, color) {
+      return '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) + '" r="' + r + '" fill="' + color + '"></circle>';
+    }
+
+    function draw() {
+      const f = Number(signalFreq.value);
+      const sr = Number(sampleRate.value);
+      signalFreqValue.textContent = String(f);
+      sampleRateValue.textContent = String(sr);
+
+      const width = 900;
+      const height = 280;
+      const padX = 26;
+      const midY = 140;
+      const amp = 74;
+      const usable = width - padX * 2;
+      const points = [];
+      const aliasFreq = Math.abs(f - sr * Math.round(f / sr));
+      const safe = f < sr / 2;
+
+      for (let i = 0; i <= 420; i += 1) {
+        const t = i / 420;
+        const x = padX + usable * t;
+        const y = midY - Math.sin(2 * Math.PI * f * t) * amp;
+        points.push([x, y]);
+      }
+
+      const aliasPoints = [];
+      for (let i = 0; i <= 420; i += 1) {
+        const t = i / 420;
+        const x = padX + usable * t;
+        const y = midY - Math.sin(2 * Math.PI * aliasFreq * t) * amp * 0.72;
+        aliasPoints.push([x, y]);
+      }
+
+      let markup = '';
+      markup += '<rect x="0" y="0" width="900" height="280" rx="18" fill="#fffdf8"></rect>';
+      markup += '<line x1="26" y1="140" x2="874" y2="140" stroke="#c7bfaf" stroke-width="2"></line>';
+      for (let i = 0; i <= sr; i += 1) {
+        const t = i / sr;
+        const x = padX + usable * t;
+        markup += '<line x1="' + x.toFixed(2) + '" y1="26" x2="' + x.toFixed(2) + '" y2="254" stroke="#ece5d8" stroke-width="1"></line>';
+      }
+      markup += polyline(points, '#d9481f', 4);
+      if (!safe && aliasFreq > 0) {
+        markup += polyline(aliasPoints, '#0b6e4f', 4);
+      }
+      for (let i = 0; i <= sr; i += 1) {
+        const t = i / sr;
+        const x = padX + usable * t;
+        const y = midY - Math.sin(2 * Math.PI * f * t) * amp;
+        markup += circle(x, y, 5, '#145da0');
+      }
+      markup += '<text x="28" y="24" fill="#5f6575" font-size="16">左から右へ時間</text>';
+      markup += '<text x="28" y="268" fill="#5f6575" font-size="15">元の波の細かさ: ' + f + ' / サンプル数: ' + sr + '</text>';
+      svg.innerHTML = markup;
+
+      if (safe) {
+        aliasMessage.textContent = '今はサンプリングが比較的細かいので、元の波の特徴を追いやすい状態です。';
+      } else if (aliasFreq === 0) {
+        aliasMessage.textContent = 'ちょうど危ない条件です。同じサンプル列が別の解釈を許しやすくなります。';
+      } else {
+        aliasMessage.textContent = '元の波の細かさが sample の半分を超えたため、低い alias と区別しにくくなっています。';
+      }
+    }
+
+    signalFreq.addEventListener('input', draw);
+    sampleRate.addEventListener('input', draw);
+    draw();
+  }());
+  </script>
+</body>
+</html>

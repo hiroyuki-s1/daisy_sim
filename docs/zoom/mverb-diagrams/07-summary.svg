@@ -1,0 +1,38 @@
+<svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" font-family="monospace" font-size="12">
+  <rect width="700" height="200" fill="#1a1a2e" rx="6"/>
+  <text x="350" y="25" text-anchor="middle" fill="#e0e0e0" font-size="14" font-weight="bold">MVerb 設計思想のまとめ</text>
+
+  <rect x="20" y="45" width="140" height="60" rx="6" fill="#1a3a2e" stroke="#4a9" stroke-width="1.5"/>
+  <text x="90" y="68" text-anchor="middle" fill="#4a9" font-size="11">帯域制限</text>
+  <text x="90" y="85" text-anchor="middle" fill="#aaa" font-size="9">空気の高域吸収</text>
+  <text x="90" y="95" text-anchor="middle" fill="#aaa" font-size="9">を模倣</text>
+
+  <rect x="185" y="45" width="140" height="60" rx="6" fill="#3a2a1a" stroke="#d9a55b" stroke-width="1.5"/>
+  <text x="255" y="68" text-anchor="middle" fill="#d9a55b" font-size="11">初期反射</text>
+  <text x="255" y="85" text-anchor="middle" fill="#aaa" font-size="9">壁からの反射を</text>
+  <text x="255" y="95" text-anchor="middle" fill="#aaa" font-size="9">マルチタップで再現</text>
+
+  <rect x="350" y="45" width="140" height="60" rx="6" fill="#2a1a3a" stroke="#a45bd9" stroke-width="1.5"/>
+  <text x="420" y="68" text-anchor="middle" fill="#c88aef" font-size="11">入力拡散</text>
+  <text x="420" y="85" text-anchor="middle" fill="#aaa" font-size="9">オールパス直列で</text>
+  <text x="420" y="95" text-anchor="middle" fill="#aaa" font-size="9">エコーを消す</text>
+
+  <rect x="515" y="45" width="160" height="60" rx="6" fill="#3a1a1a" stroke="#d95b5b" stroke-width="1.5"/>
+  <text x="595" y="68" text-anchor="middle" fill="#f99" font-size="11">交差FBタンク</text>
+  <text x="595" y="85" text-anchor="middle" fill="#aaa" font-size="9">L⇄Rのフィードバック</text>
+  <text x="595" y="95" text-anchor="middle" fill="#aaa" font-size="9">で残響テールを生成</text>
+
+  <line x1="160" y1="75" x2="185" y2="75" stroke="#ccc" stroke-width="1.5" marker-end="url(#arwS)"/>
+  <line x1="325" y1="75" x2="350" y2="75" stroke="#ccc" stroke-width="1.5" marker-end="url(#arwS)"/>
+  <line x1="490" y1="75" x2="515" y2="75" stroke="#ccc" stroke-width="1.5" marker-end="url(#arwS)"/>
+
+  <text x="350" y="140" text-anchor="middle" fill="#e0e0e0" font-size="11">Dattorro 型プレートリバーブの簡潔な実装。</text>
+  <text x="350" y="160" text-anchor="middle" fill="#aaa" font-size="10">少ない DSP ブロック (Allpass + Delay + LPF) の組み合わせだけで</text>
+  <text x="350" y="175" text-anchor="middle" fill="#aaa" font-size="10">リッチなステレオリバーブを実現している。</text>
+
+  <defs>
+    <marker id="arwS" markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <path d="M0,0 L6,2.5 L0,5" fill="none" stroke="#ccc" stroke-width="0.8"/>
+    </marker>
+  </defs>
+</svg>

@@ -1,0 +1,67 @@
+<svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" font-family="monospace" font-size="12">
+  <rect width="700" height="300" fill="#1a1a2e" rx="6"/>
+  <text x="350" y="22" text-anchor="middle" fill="#e0e0e0" font-size="14" font-weight="bold">Early Reflections (L チャンネル)</text>
+
+  <text x="20" y="55" fill="#5b8dd9" font-size="10">bwLeft×0.5</text>
+  <text x="20" y="70" fill="#5b8dd9" font-size="10">+ bwRight×0.3</text>
+
+  <line x1="115" y1="60" x2="140" y2="60" stroke="#5b8dd9" stroke-width="1.5"/>
+
+  <rect x="140" y="38" width="420" height="45" rx="4" fill="#3a2a1a" stroke="#d9a55b"/>
+  <text x="350" y="55" text-anchor="middle" fill="#d9a55b" font-size="10">8-Tap Delay Line (89 ms @ 44.1kHz)</text>
+  <text x="350" y="70" text-anchor="middle" fill="#e8bf7a" font-size="9">earlyReflectionsDelayLine[0]</text>
+
+  <line x1="155" y1="83" x2="155" y2="120" stroke="#d9a55b" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="155" y="100" text-anchor="middle" fill="#e8bf7a" font-size="8">Tap0</text>
+  <text x="155" y="135" text-anchor="middle" fill="#fff" font-size="9">0 ms</text>
+  <text x="155" y="148" text-anchor="middle" fill="#aaa" font-size="9">×1.0</text>
+
+  <line x1="225" y1="83" x2="225" y2="120" stroke="#d9a55b" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="225" y="100" text-anchor="middle" fill="#e8bf7a" font-size="8">Tap2</text>
+  <text x="225" y="135" text-anchor="middle" fill="#fff" font-size="9">19.9ms</text>
+  <text x="225" y="148" text-anchor="middle" fill="#aaa" font-size="9">×0.6</text>
+
+  <line x1="280" y1="83" x2="280" y2="120" stroke="#d9a55b" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="280" y="100" text-anchor="middle" fill="#e8bf7a" font-size="8">Tap3</text>
+  <text x="280" y="135" text-anchor="middle" fill="#fff" font-size="9">21.9ms</text>
+  <text x="280" y="148" text-anchor="middle" fill="#aaa" font-size="9">×0.4</text>
+
+  <line x1="340" y1="83" x2="340" y2="120" stroke="#d9a55b" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="340" y="100" text-anchor="middle" fill="#e8bf7a" font-size="8">Tap4</text>
+  <text x="340" y="135" text-anchor="middle" fill="#fff" font-size="9">35.4ms</text>
+  <text x="340" y="148" text-anchor="middle" fill="#aaa" font-size="9">×0.3</text>
+
+  <line x1="400" y1="83" x2="400" y2="120" stroke="#d9a55b" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="400" y="100" text-anchor="middle" fill="#e8bf7a" font-size="8">Tap5</text>
+  <text x="400" y="135" text-anchor="middle" fill="#fff" font-size="9">38.9ms</text>
+  <text x="400" y="148" text-anchor="middle" fill="#aaa" font-size="9">×0.3</text>
+
+  <line x1="455" y1="83" x2="455" y2="120" stroke="#d9a55b" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="455" y="100" text-anchor="middle" fill="#e8bf7a" font-size="8">Tap6</text>
+  <text x="455" y="135" text-anchor="middle" fill="#fff" font-size="9">41.4ms</text>
+  <text x="455" y="148" text-anchor="middle" fill="#aaa" font-size="9">×0.1</text>
+
+  <line x1="510" y1="83" x2="510" y2="120" stroke="#d9a55b" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="510" y="100" text-anchor="middle" fill="#e8bf7a" font-size="8">Tap7</text>
+  <text x="510" y="135" text-anchor="middle" fill="#fff" font-size="9">69.2ms</text>
+  <text x="510" y="148" text-anchor="middle" fill="#aaa" font-size="9">×0.1</text>
+
+  <line x1="155" y1="155" x2="155" y2="200" stroke="#ccc" stroke-width="0.8"/>
+  <line x1="225" y1="155" x2="225" y2="200" stroke="#ccc" stroke-width="0.8"/>
+  <line x1="280" y1="155" x2="280" y2="200" stroke="#ccc" stroke-width="0.8"/>
+  <line x1="340" y1="155" x2="340" y2="200" stroke="#ccc" stroke-width="0.8"/>
+  <line x1="400" y1="155" x2="400" y2="200" stroke="#ccc" stroke-width="0.8"/>
+  <line x1="455" y1="155" x2="455" y2="200" stroke="#ccc" stroke-width="0.8"/>
+  <line x1="510" y1="155" x2="510" y2="200" stroke="#ccc" stroke-width="0.8"/>
+
+  <circle cx="350" cy="210" r="15" fill="none" stroke="#fff" stroke-width="1.5"/>
+  <text x="350" y="214" text-anchor="middle" fill="#fff" font-size="14">Σ</text>
+
+  <text x="20" y="230" fill="#4a9" font-size="9">+ (bwL×0.4 + bwR×0.2) × 0.5</text>
+  <line x1="180" y1="225" x2="335" y2="215" stroke="#4a9" stroke-width="1" stroke-dasharray="3,2"/>
+
+  <line x1="350" y1="225" x2="350" y2="260" stroke="#5bd9d9" stroke-width="1.5"/>
+  <text x="350" y="278" text-anchor="middle" fill="#5bd9d9" font-size="11">earlyReflectionsL</text>
+
+  <text x="350" y="295" text-anchor="middle" fill="#aaa" font-size="10">異なる遅延時間のタップを重み付けして加算 → 自然な初期反射パターンを生成</text>
+</svg>

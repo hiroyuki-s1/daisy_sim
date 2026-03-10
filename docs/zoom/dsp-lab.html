@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSP 体験ラボ | ZOOM DSP コース</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+:root { --bg:#f5f1e8; --paper:#fffdfa; --ink:#18202d; --muted:#5b6575; --line:#d7d1c3; --accent:#c2410c; --a2:#0f766e; --a3:#1d4ed8; --shadow:0 18px 46px rgba(24,32,45,.08); }
+body { font-family:"Yu Gothic UI","Meiryo",sans-serif; background:linear-gradient(180deg,#f5f1e8,#eee6d8); color:var(--ink); line-height:1.8; }
+.wrap { width:min(1180px,calc(100% - 32px)); margin:0 auto; }
+.hero,.lab,.footer { background:rgba(255,253,250,.95); border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow); }
+.hero { margin:28px auto 20px; padding:28px; }
+.eyebrow { display:inline-block; padding:8px 14px; border-radius:999px; background:#ffe8db; color:var(--accent); font-weight:700; font-size:.88rem; }
+h1 { margin-top:14px; font-size:clamp(2rem,4vw,3.8rem); line-height:1.05; }
+.lead { margin-top:16px; color:var(--muted); }
+.nav { display:flex; gap:12px; flex-wrap:wrap; margin-top:18px; }
+.nav a { text-decoration:none; color:var(--ink); border:1px solid var(--line); padding:10px 16px; border-radius:999px; background:#fff; font-weight:700; }
+.lab { margin:18px auto; padding:22px; }
+.lab h2 { font-size:1.5rem; margin-bottom:6px; }
+.lab p { color:var(--muted); }
+.controls { display:grid; gap:12px; margin-top:16px; }
+.control { display:grid; grid-template-columns:180px 1fr 80px; gap:14px; align-items:center; }
+.control label { font-weight:700; }
+input[type="range"] { width:100%; accent-color:var(--accent); }
+button, select { min-height:40px; border-radius:12px; border:1px solid var(--line); background:#fff; color:var(--ink); padding:0 12px; font-weight:700; }
+.btn-row { display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; }
+canvas { width:100%; height:220px; border-radius:18px; background:#fff; border:1px solid var(--line); margin-top:16px; }
+.callout { margin-top:14px; padding:14px 16px; background:rgba(15,118,110,.08); border-left:4px solid var(--a2); border-radius:0 16px 16px 0; }
+.footer { margin:28px auto 42px; padding:22px; }
+.footer ol { margin-left:20px; margin-top:10px; }
+@media (max-width:760px) { .control { grid-template-columns:1fr; gap:8px; } }
+</style>
+</head>
+<body>
+  <div class="wrap hero">
+    <span class="eyebrow">体験ラボ</span>
+    <h1>見るだけでなく、耳と手で effect の本質を確かめる。</h1>
+    <p class="lead">このページは in-browser の簡易シミュレータです。入力音は短い test tone や pluck を内部生成し、dry / processed を聴き比べできます。DAW ほど本格的ではありませんが、DSP の仕組みを掴むには十分です。</p>
+    <div class="nav">
+      <a href="begin.html">コースハブへ戻る</a>
+      <a href="advanced-zoom-dsp.html">上級編へ</a>
+      <a href="index.html">解析一覧へ</a>
+    </div>
+  </div>
+
+  <div class="wrap lab" id="distortionLab">
+    <h2>1. Waveshaper / Distortion</h2>
+    <p>drive を上げると倍音が増えます。同時に aliasing リスクも上がります。ここでは oversampling の有無で見た目と音の差を確認できます。</p>
+    <div class="controls">
+      <div class="control"><label for="driveAmount">Drive</label><input id="driveAmount" type="range" min="1" max="40" value="12"><strong id="driveAmountValue">12</strong></div>
+      <div class="control"><label for="driveTone">Tone</label><input id="driveTone" type="range" min="0" max="100" value="55"><strong id="driveToneValue">55</strong></div>
+      <div class="control"><label for="oversampleToggle">Oversampling</label><select id="oversampleToggle"><option value="1">なし</option><option value="2">2x</option><option value="4">4x</option></select><span></span></div>
+    </div>
+    <div class="btn-row">
+      <button id="playDriveDry">Dry を再生</button>
+      <button id="playDriveWet">Processed を再生</button>
+      <button id="drawDrive">グラフ更新</button>
+    </div>
+    <canvas id="driveCanvas" width="1080" height="260"></canvas>
+    <div class="callout">高域が増える nonlinear 処理ほど、内部 oversampling の意味が大きくなります。</div>
+  </div>
+
+  <div class="wrap lab" id="compressorLab">
+    <h2>2. Compressor</h2>
+    <p>入力レベルをそのまま切るのでなく、包絡を見て gain を変える effect だと分かるよう、入力波形と gain reduction を並べて描きます。</p>
+    <div class="controls">
+      <div class="control"><label for="compThreshold">Threshold</label><input id="compThreshold" type="range" min="10" max="95" value="55"><strong id="compThresholdValue">55</strong></div>
+      <div class="control"><label for="compRatio">Ratio</label><input id="compRatio" type="range" min="1" max="12" value="4"><strong id="compRatioValue">4</strong></div>
+      <div class="control"><label for="compAttack">Attack</label><input id="compAttack" type="range" min="1" max="80" value="12"><strong id="compAttackValue">12</strong></div>
+      <div class="control"><label for="compRelease">Release</label><input id="compRelease" type="range" min="20" max="240" value="120"><strong id="compReleaseValue">120</strong></div>
+    </div>
+    <div class="btn-row">
+      <button id="playCompDry">Dry を再生</button>
+      <button id="playCompWet">Processed を再生</button>
+      <button id="drawComp">グラフ更新</button>
+    </div>
+    <canvas id="compCanvas" width="1080" height="260"></canvas>
+    <div class="callout">attack を速くすると頭をすぐ捕まえ、release を遅くすると戻りがゆっくりになります。</div>
+  </div>
+
+  <div class="wrap lab" id="delayLab">
+    <h2>3. Delay / Echo</h2>
+    <p>buffer、delay time、feedback、mix の 4 つだけで、かなり多くの空間系の直感が作れます。</p>
+    <div class="controls">
+      <div class="control"><label for="delayTime">Delay Time ms</label><input id="delayTime" type="range" min="40" max="650" value="260"><strong id="delayTimeValue">260</strong></div>
+      <div class="control"><label for="delayFeedback">Feedback %</label><input id="delayFeedback" type="range" min="0" max="85" value="38"><strong id="delayFeedbackValue">38</strong></div>
+      <div class="control"><label for="delayMix">Mix %</label><input id="delayMix" type="range" min="0" max="100" value="35"><strong id="delayMixValue">35</strong></div>
+    </div>
+    <div class="btn-row">
+      <button id="playDelayDry">Dry を再生</button>
+      <button id="playDelayWet">Processed を再生</button>
+      <button id="drawDelay">グラフ更新</button>
+    </div>
+    <canvas id="delayCanvas" width="1080" height="260"></canvas>
+    <div class="callout">feedback を上げるほど繰り返しが長く残り、mix を上げるほど原音より反射が前に出ます。</div>
+  </div>
+
+  <div class="wrap lab" id="cabLab">
+    <h2>4. Cabinet / FIR</h2>
+    <p>簡易 IR を切り替えて、speaker / mic の色が高域と中域をどう変えるかを確認します。ここでは短い FIR として実装しています。</p>
+    <div class="controls">
+      <div class="control"><label for="cabPreset">Cab Preset</label><select id="cabPreset"><option value="bright112">Bright 1x12</option><option value="dark412">Dark 4x12</option><option value="mid412">Mid Push 4x12</option></select><span></span></div>
+      <div class="control"><label for="cabMix">Mix %</label><input id="cabMix" type="range" min="0" max="100" value="100"><strong id="cabMixValue">100</strong></div>
+    </div>
+    <div class="btn-row">
+      <button id="playCabDry">Dry を再生</button>
+      <button id="playCabWet">Processed を再生</button>
+      <button id="drawCab">グラフ更新</button>
+    </div>
+    <canvas id="cabCanvas" width="1080" height="260"></canvas>
+    <div class="callout">cab sim は「単なる EQ」に見えても、実装としては FIR / IR による時系列の重み付けで表現できる場面が多いです。</div>
+  </div>
+
+  <div class="wrap footer">
+    <h2>ラボの使い方</h2>
+    <ol>
+      <li>まず dry を聴いて基準を作る</li>
+      <li>次に processed を聴き、グラフと一緒に何が変わったか確認する</li>
+      <li>そのあと index.html の effect 解説へ戻ると、係数や DSP load の意味がかなり読みやすくなる</li>
+    </ol>
+  </div>
+
+  <script>
+  (function() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let audioContext = null;
+    function ensureAudio() {
+      if (!AudioContextClass) {
+        alert('このブラウザでは Web Audio API が使えません。');
+        return null;
+      }
+      if (!audioContext) {
+        audioContext = new AudioContextClass();
+      }
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      return audioContext;
+    }
+    function makeBuffer(data, sampleRate) {
+      const ctx = ensureAudio();
+      if (!ctx) return null;
+      const buf = ctx.createBuffer(1, data.length, sampleRate);
+      buf.copyToChannel(data, 0);
+      return buf;
+    }
+    function playArray(data, sampleRate) {
+      const ctx = ensureAudio();
+      if (!ctx) return;
+      const source = ctx.createBufferSource();
+      source.buffer = makeBuffer(data, sampleRate);
+      source.connect(ctx.destination);
+      source.start();
+    }
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function drawWave(canvas, series) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width; const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#fffdf8'; ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#dcd4c6'; ctx.lineWidth = 1;
+      for (let i = 0; i < 6; i += 1) {
+        const y = 20 + (h - 40) * i / 5;
+        ctx.beginPath(); ctx.moveTo(20, y); ctx.lineTo(w - 20, y); ctx.stroke();
+      }
+      series.forEach(function(item) {
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = item.width || 2;
+        ctx.beginPath();
+        for (let i = 0; i < item.data.length; i += 1) {
+          const x = 20 + (w - 40) * i / (item.data.length - 1);
+          const y = h / 2 - item.data[i] * (h * 0.36);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      });
+    }
+    function genDriveInput(sampleRate, seconds) {
+      const length = Math.floor(sampleRate * seconds);
+      const out = new Float32Array(length);
+      for (let i = 0; i < length; i += 1) {
+        const t = i / sampleRate;
+        out[i] = 0.48 * Math.sin(2 * Math.PI * 220 * t) + 0.24 * Math.sin(2 * Math.PI * 440 * t) + 0.12 * Math.sin(2 * Math.PI * 660 * t);
+      }
+      return out;
+    }
+    function onePoleLowpass(data, cutoff, sampleRate) {
+      const out = new Float32Array(data.length);
+      const alpha = clamp(2 * Math.PI * cutoff / sampleRate, 0, 0.99);
+      let y = 0;
+      for (let i = 0; i < data.length; i += 1) {
+        y += alpha * (data[i] - y);
+        out[i] = y;
+      }
+      return out;
+    }
+    function oversampleLinear(data, factor) {
+      if (factor === 1) return data;
+      const out = new Float32Array((data.length - 1) * factor + 1);
+      let index = 0;
+      for (let i = 0; i < data.length - 1; i += 1) {
+        const a = data[i]; const b = data[i + 1];
+        for (let k = 0; k < factor; k += 1) {
+          const t = k / factor;
+          out[index++] = a + (b - a) * t;
+        }
+      }
+      out[index] = data[data.length - 1];
+      return out;
+    }
+    function decimatePick(data, factor) {
+      if (factor === 1) return data;
+      const out = new Float32Array(Math.ceil(data.length / factor));
+      for (let i = 0, j = 0; i < out.length; i += 1, j += factor) out[i] = data[j] || 0;
+      return out;
+    }
+    function processDrive() {
+      const drive = Number(document.getElementById('driveAmount').value);
+      const tone = Number(document.getElementById('driveTone').value);
+      const factor = Number(document.getElementById('oversampleToggle').value);
+      document.getElementById('driveAmountValue').textContent = String(drive);
+      document.getElementById('driveToneValue').textContent = String(tone);
+      const sr = 44100;
+      const dry = genDriveInput(sr, 1.2);
+      const up = oversampleLinear(dry, factor);
+      const shaped = new Float32Array(up.length);
+      for (let i = 0; i < up.length; i += 1) shaped[i] = Math.tanh(up[i] * (1 + drive * 0.22));
+      const toned = onePoleLowpass(shaped, 900 + tone * 80, sr * factor);
+      const wet = decimatePick(toned, factor);
+      return { sampleRate: sr, dry: dry, wet: wet };
+    }
+    function genPluck(sampleRate, seconds) {
+      const length = Math.floor(sampleRate * seconds);
+      const out = new Float32Array(length);
+      for (let i = 0; i < length; i += 1) {
+        const t = i / sampleRate;
+        const env = Math.exp(-t * 5.5);
+        out[i] = env * (0.75 * Math.sin(2 * Math.PI * 164.81 * t) + 0.26 * Math.sin(2 * Math.PI * 329.63 * t) + 0.14 * Math.sin(2 * Math.PI * 494.44 * t));
+      }
+      return out;
+    }
+    function processCompressor() {
+      const threshold = Number(document.getElementById('compThreshold').value) / 100;
+      const ratio = Number(document.getElementById('compRatio').value);
+      const attackMs = Number(document.getElementById('compAttack').value);
+      const releaseMs = Number(document.getElementById('compRelease').value);
+      document.getElementById('compThresholdValue').textContent = String(Number(document.getElementById('compThreshold').value));
+      document.getElementById('compRatioValue').textContent = String(ratio);
+      document.getElementById('compAttackValue').textContent = String(attackMs);
+      document.getElementById('compReleaseValue').textContent = String(releaseMs);
+      const sr = 44100;
+      const dry = genPluck(sr, 1.5);
+      const wet = new Float32Array(dry.length);
+      const envTrace = new Float32Array(dry.length);
+      const gainTrace = new Float32Array(dry.length);
+      const aA = Math.exp(-1 / (sr * attackMs / 1000));
+      const aR = Math.exp(-1 / (sr * releaseMs / 1000));
+      let env = 0;
+      for (let i = 0; i < dry.length; i += 1) {
+        const rect = Math.abs(dry[i]);
+        env = rect > env ? aA * env + (1 - aA) * rect : aR * env + (1 - aR) * rect;
+        const over = env > threshold ? env - threshold : 0;
+        const gain = env > threshold ? Math.max(0.18, 1 - over * (1 - 1 / ratio) * 1.8) : 1;
+        wet[i] = dry[i] * gain * 1.4;
+        envTrace[i] = env;
+        gainTrace[i] = gain;
+      }
+      return { sampleRate: sr, dry: dry, wet: wet, env: envTrace, gain: gainTrace };
+    }
+    function processDelay() {
+      const delayMs = Number(document.getElementById('delayTime').value);
+      const feedback = Number(document.getElementById('delayFeedback').value) / 100;
+      const mix = Number(document.getElementById('delayMix').value) / 100;
+      document.getElementById('delayTimeValue').textContent = String(delayMs);
+      document.getElementById('delayFeedbackValue').textContent = String(Number(document.getElementById('delayFeedback').value));
+      document.getElementById('delayMixValue').textContent = String(Number(document.getElementById('delayMix').value));
+      const sr = 44100;
+      const dry = genPluck(sr, 2.0);
+      const wet = new Float32Array(dry.length);
+      const delaySamples = Math.max(1, Math.floor(sr * delayMs / 1000));
+      const buf = new Float32Array(dry.length + delaySamples * 5);
+      for (let i = 0; i < dry.length; i += 1) {
+        const delayed = i >= delaySamples ? buf[i - delaySamples] : 0;
+        buf[i] = dry[i] + delayed * feedback;
+        wet[i] = dry[i] * (1 - mix) + delayed * mix;
+      }
+      return { sampleRate: sr, dry: dry, wet: wet };
+    }
+    function getCabIR(name) {
+      if (name === 'dark412') return [0.42, 0.36, 0.24, 0.14, 0.07, 0.02, -0.02, -0.03, -0.02];
+      if (name === 'mid412') return [0.52, 0.18, -0.08, -0.12, 0.06, 0.09, 0.03, -0.01, -0.02];
+      return [0.62, 0.2, -0.14, 0.05, 0.04, -0.03, 0.02];
+    }
+    function convolveSimple(input, ir) {
+      const out = new Float32Array(input.length);
+      for (let i = 0; i < input.length; i += 1) {
+        let sum = 0;
+        for (let k = 0; k < ir.length; k += 1) {
+          if (i - k >= 0) sum += input[i - k] * ir[k];
+        }
+        out[i] = sum;
+      }
+      return out;
+    }
+    function processCab() {
+      const preset = document.getElementById('cabPreset').value;
+      const mix = Number(document.getElementById('cabMix').value) / 100;
+      document.getElementById('cabMixValue').textContent = String(Number(document.getElementById('cabMix').value));
+      const sr = 44100;
+      const dry = genPluck(sr, 1.4);
+      const ir = getCabIR(preset);
+      const conv = convolveSimple(dry, ir);
+      const wet = new Float32Array(dry.length);
+      for (let i = 0; i < dry.length; i += 1) wet[i] = dry[i] * (1 - mix) + conv[i] * mix;
+      return { sampleRate: sr, dry: dry, wet: wet, ir: ir };
+    }
+    function bindControls() {
+      const driveCanvas = document.getElementById('driveCanvas');
+      const compCanvas = document.getElementById('compCanvas');
+      const delayCanvas = document.getElementById('delayCanvas');
+      const cabCanvas = document.getElementById('cabCanvas');
+      function refreshDrive() {
+        const result = processDrive();
+        drawWave(driveCanvas, [
+          { data: Array.from(result.dry.slice(0, 900)), color: '#1d4ed8', width: 2 },
+          { data: Array.from(result.wet.slice(0, 900)), color: '#c2410c', width: 3 }
+        ]);
+        return result;
+      }
+      function refreshComp() {
+        const result = processCompressor();
+        drawWave(compCanvas, [
+          { data: Array.from(result.dry.slice(0, 1200)), color: '#1d4ed8', width: 2 },
+          { data: Array.from(result.env.slice(0, 1200)), color: '#0f766e', width: 2 },
+          { data: Array.from(result.gain.slice(0, 1200).map(function(v){ return v - 0.5; })), color: '#c2410c', width: 2 }
+        ]);
+        return result;
+      }
+      function refreshDelay() {
+        const result = processDelay();
+        drawWave(delayCanvas, [
+          { data: Array.from(result.dry.slice(0, 2200)), color: '#1d4ed8', width: 2 },
+          { data: Array.from(result.wet.slice(0, 2200)), color: '#c2410c', width: 3 }
+        ]);
+        return result;
+      }
+      function refreshCab() {
+        const result = processCab();
+        const irExpanded = new Array(120).fill(0).map(function(_, i){ return result.ir[i] || 0; });
+        drawWave(cabCanvas, [
+          { data: Array.from(result.wet.slice(0, 1000)), color: '#c2410c', width: 3 },
+          { data: irExpanded, color: '#0f766e', width: 2 }
+        ]);
+        return result;
+      }
+      let driveState = refreshDrive();
+      let compState = refreshComp();
+      let delayState = refreshDelay();
+      let cabState = refreshCab();
+      ['driveAmount','driveTone','oversampleToggle'].forEach(function(id){ document.getElementById(id).addEventListener('input', function(){ driveState = refreshDrive(); }); document.getElementById(id).addEventListener('change', function(){ driveState = refreshDrive(); }); });
+      ['compThreshold','compRatio','compAttack','compRelease'].forEach(function(id){ document.getElementById(id).addEventListener('input', function(){ compState = refreshComp(); }); });
+      ['delayTime','delayFeedback','delayMix'].forEach(function(id){ document.getElementById(id).addEventListener('input', function(){ delayState = refreshDelay(); }); });
+      ['cabPreset','cabMix'].forEach(function(id){ document.getElementById(id).addEventListener('input', function(){ cabState = refreshCab(); }); document.getElementById(id).addEventListener('change', function(){ cabState = refreshCab(); }); });
+      document.getElementById('drawDrive').addEventListener('click', function(){ driveState = refreshDrive(); });
+      document.getElementById('drawComp').addEventListener('click', function(){ compState = refreshComp(); });
+      document.getElementById('drawDelay').addEventListener('click', function(){ delayState = refreshDelay(); });
+      document.getElementById('drawCab').addEventListener('click', function(){ cabState = refreshCab(); });
+      document.getElementById('playDriveDry').addEventListener('click', function(){ playArray(driveState.dry, driveState.sampleRate); });
+      document.getElementById('playDriveWet').addEventListener('click', function(){ playArray(driveState.wet, driveState.sampleRate); });
+      document.getElementById('playCompDry').addEventListener('click', function(){ playArray(compState.dry, compState.sampleRate); });
+      document.getElementById('playCompWet').addEventListener('click', function(){ playArray(compState.wet, compState.sampleRate); });
+      document.getElementById('playDelayDry').addEventListener('click', function(){ playArray(delayState.dry, delayState.sampleRate); });
+      document.getElementById('playDelayWet').addEventListener('click', function(){ playArray(delayState.wet, delayState.sampleRate); });
+      document.getElementById('playCabDry').addEventListener('click', function(){ playArray(cabState.dry, cabState.sampleRate); });
+      document.getElementById('playCabWet').addEventListener('click', function(){ playArray(cabState.wet, cabState.sampleRate); });
+    }
+    bindControls();
+  }());
+  </script>
+</body>
+</html>

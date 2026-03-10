@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>バイクワッドフィルタ学習ツール</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+    background: #0f0f1a;
+    color: #ddd;
+    overflow-x: hidden;
+  }
+  h1 {
+    text-align: center;
+    padding: 18px;
+    font-size: 1.3em;
+    color: #ff9e64;
+    border-bottom: 1px solid #333;
+  }
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px;
+    background: #161625;
+  }
+  .tab {
+    padding: 8px 20px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9em;
+    color: #aaa;
+    background: transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { border-color: #ff9e64; color: #ff9e64; }
+  .tab.active { background: #ff9e64; color: #000; border-color: #ff9e64; font-weight: bold; }
+
+  .page { display: none; padding: 16px; max-width: 900px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  canvas {
+    display: block;
+    margin: 8px auto;
+    border-radius: 8px;
+    background: #1a1a2e;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    padding: 12px;
+    background: #1a1a2e;
+    border-radius: 8px;
+    margin: 12px 0;
+  }
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 140px;
+  }
+  .control-group label {
+    font-size: 0.8em;
+    color: #888;
+    margin-bottom: 4px;
+  }
+  .control-group .value {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #ff9e64;
+    margin-bottom: 2px;
+    min-height: 1.4em;
+  }
+  input[type="range"] {
+    width: 140px;
+    accent-color: #ff9e64;
+  }
+
+  .explanation {
+    background: #1e1e30;
+    border-left: 3px solid #4a9eff;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.9em;
+    line-height: 1.6;
+  }
+  .explanation.highlight {
+    border-left-color: #e94560;
+    background: #2a1a1e;
+  }
+  .explanation.green {
+    border-left-color: #2ecc71;
+    background: #1a2a1e;
+  }
+
+  .status-box {
+    text-align: center;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: bold;
+  }
+
+  button {
+    padding: 8px 20px;
+    border: 1px solid #ff9e64;
+    background: transparent;
+    color: #ff9e64;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s;
+  }
+  button:hover { background: #ff9e64; color: #000; }
+  button.active { background: #ff9e64; color: #000; }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 8px 0;
+  }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    font-size: 0.8em;
+    margin: 4px 0;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .quiz-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    margin: 6px 0;
+    border: 1px solid #444;
+    border-radius: 8px;
+    font-size: 0.95em;
+    color: #ddd;
+    background: #1a1a2e;
+  }
+  .quiz-option:hover { border-color: #ff9e64; }
+  .quiz-option.correct { border-color: #2ecc71; background: #1a2a1e; color: #2ecc71; }
+  .quiz-option.wrong { border-color: #e94560; background: #2a1a1e; color: #e94560; }
+
+  .score { text-align: center; font-size: 1.2em; color: #ff9e64; margin: 12px 0; }
+</style>
+</head>
+<body>
+
+<h1>バイクワッドフィルタ 体験学習ツール</h1>
+
+<div class="tabs">
+  <div class="tab active" onclick="showPage(0)">1. 波の干渉</div>
+  <div class="tab" onclick="showPage(1)">2. バイクワッド体験</div>
+  <div class="tab" onclick="showPage(2)">3. フィルタの種類</div>
+  <div class="tab" onclick="showPage(3)">4. 理解度チェック</div>
+</div>
+
+<!-- ===== PAGE 1: 波の干渉 ===== -->
+<div class="page active" id="page0">
+  <div class="explanation">
+    <strong>波の干渉とは？</strong><br>
+    2つの波が重なると、山と山が合えば<span style="color:#2ecc71">強め合い</span>、山と谷が合えば<span style="color:#e94560">打ち消し合う</span>。<br>
+    下のスライダーで戻り波の<strong>位相（ずれ）</strong>を変えて、合計がどう変わるか見てみよう。
+  </div>
+
+  <canvas id="c1" width="860" height="360"></canvas>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#4a9eff"></div>入力波</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e94560"></div>フィードバック(戻り)波</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>合計(結果)</div>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>位相のずれ (度)</label>
+      <div class="value" id="v_phase">0°</div>
+      <input type="range" id="s_phase" min="0" max="360" value="0" step="1">
+    </div>
+    <div class="control-group">
+      <label>フィードバックの強さ</label>
+      <div class="value" id="v_fb">0.80</div>
+      <input type="range" id="s_fb" min="0" max="100" value="80" step="1">
+    </div>
+  </div>
+
+  <div class="status-box" id="interference_status" style="background:#1a2a1e;color:#2ecc71;">
+    ★ 完全に強め合っている — 共鳴！(ブースト)
+  </div>
+
+  <div class="explanation green">
+    <strong>バイクワッドとの関係:</strong><br>
+    バイクワッドの <code>a1</code> は「戻り波の位相ずれ」を決める → <strong>どの周波数で共鳴するか</strong><br>
+    バイクワッドの <code>a2</code> は「フィードバックの強さ」を決める → <strong>共鳴の鋭さ(Q)</strong><br>
+    <br>
+    位相ずれ0°（山と山が一致）の周波数だけが強まる = <strong>EQ的な周波数選別の正体</strong>
+  </div>
+</div>
+
+<!-- ===== PAGE 2: バイクワッド体験 ===== -->
+<div class="page" id="page1">
+  <div class="explanation">
+    <strong>バイクワッドを動かしてみよう</strong><br>
+    <code>a1</code>(共鳴周波数) と <code>a2</code>(共鳴の鋭さ) を変えて、周波数特性とインパルス応答がどう変わるか体験しよう。
+  </div>
+
+  <canvas id="c2_freq" width="860" height="240"></canvas>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#ff9e64"></div>周波数特性 (どの周波数が強まるか)</div>
+  </div>
+
+  <canvas id="c2_imp" width="860" height="180"></canvas>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#4a9eff"></div>入力 (パン！)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>出力 (ボーン...)</div>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>a1 (共鳴周波数)</label>
+      <div class="value" id="v_a1">-1.40</div>
+      <input type="range" id="s_a1" min="-199" max="0" value="-140" step="1">
+    </div>
+    <div class="control-group">
+      <label>a2 (共鳴の鋭さ Q)</label>
+      <div class="value" id="v_a2">0.85</div>
+      <input type="range" id="s_a2" min="10" max="98" value="85" step="1">
+    </div>
+    <div class="control-group">
+      <label>b0 (入力ゲイン)</label>
+      <div class="value" id="v_b0">0.20</div>
+      <input type="range" id="s_b0" min="1" max="100" value="20" step="1">
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button onclick="setPreset('lpf')">LPF (トーン絞り)</button>
+    <button onclick="setPreset('bpf')">BPF (ワウ半踏み)</button>
+    <button onclick="setPreset('peak')">ピーキングEQ</button>
+    <button onclick="setPreset('resonance')">ボディ共鳴</button>
+  </div>
+
+  <div class="status-box" id="biquad_status" style="background:#1e1e30;color:#ff9e64;">
+    共鳴周波数: ~2400Hz / Q: 中程度
+  </div>
+</div>
+
+<!-- ===== PAGE 3: フィルタの種類 ===== -->
+<div class="page" id="page2">
+  <div class="explanation">
+    <strong>同じバイクワッドで全種類のフィルタを作る</strong><br>
+    下のボタンを押して、5つの係数(b0,b1,b2,a1,a2)が変わるだけでフィルタの種類が変わることを体験しよう。
+  </div>
+
+  <canvas id="c3" width="860" height="300"></canvas>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#ff9e64"></div>周波数特性</div>
+    <div class="legend-item" style="color:#666">縦軸: 音量(dB) / 横軸: 周波数(Hz)</div>
+  </div>
+
+  <div class="btn-row">
+    <button onclick="setFilterType('lpf')" id="ft_lpf">LPF</button>
+    <button onclick="setFilterType('hpf')" id="ft_hpf">HPF</button>
+    <button onclick="setFilterType('bpf')" id="ft_bpf">BPF</button>
+    <button onclick="setFilterType('peak')" id="ft_peak">ピーキング</button>
+    <button onclick="setFilterType('notch')" id="ft_notch">ノッチ</button>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>カットオフ / 中心周波数</label>
+      <div class="value" id="v_fc">1000 Hz</div>
+      <input type="range" id="s_fc" min="60" max="12000" value="1000" step="10">
+    </div>
+    <div class="control-group">
+      <label>Q (鋭さ)</label>
+      <div class="value" id="v_q">1.0</div>
+      <input type="range" id="s_q" min="10" max="200" value="100" step="1">
+    </div>
+    <div class="control-group">
+      <label>ゲイン (dB)</label>
+      <div class="value" id="v_gain">6 dB</div>
+      <input type="range" id="s_gain" min="-18" max="18" value="6" step="1">
+    </div>
+  </div>
+
+  <div class="explanation green" id="filter_desc">
+    <strong>LPF (ローパスフィルタ):</strong> 設定した周波数より高い音をカット。ギターのトーンノブを絞った状態。
+  </div>
+
+  <div class="status-box" id="coeff_display" style="background:#1e1e30;color:#888;font-family:monospace;font-size:0.85em;">
+    b0=0.067 b1=0.134 b2=0.067 a1=-1.143 a2=0.412
+  </div>
+</div>
+
+<!-- ===== PAGE 4: クイズ ===== -->
+<div class="page" id="page3">
+  <div class="explanation">
+    <strong>理解度チェック</strong><br>
+    ここまでの内容が身についたか確認しよう。
+  </div>
+
+  <div id="quiz_area"></div>
+  <div class="score" id="quiz_score"></div>
+  <div class="btn-row" id="quiz_restart" style="display:none;">
+    <button onclick="startQuiz()">もう一度チャレンジ</button>
+  </div>
+</div>
+
+<script>
+// ========== Tab switching ==========
+const pages = document.querySelectorAll('.page');
+const tabs = document.querySelectorAll('.tab');
+function showPage(i) {
+  pages.forEach((p, j) => { p.classList.toggle('active', j === i); });
+  tabs.forEach((t, j) => { t.classList.toggle('active', j === i); });
+}
+
+// ========== PAGE 1: Wave interference ==========
+const c1 = document.getElementById('c1');
+const ctx1 = c1.getContext('2d');
+const sPhase = document.getElementById('s_phase');
+const sFb = document.getElementById('s_fb');
+
+function drawInterference() {
+  const W = c1.width, H = c1.height;
+  const phase = +sPhase.value * Math.PI / 180;
+  const fb = +sFb.value / 100;
+
+  document.getElementById('v_phase').textContent = sPhase.value + '°';
+  document.getElementById('v_fb').textContent = fb.toFixed(2);
+
+  ctx1.clearRect(0, 0, W, H);
+  ctx1.fillStyle = '#1a1a2e';
+  ctx1.fillRect(0, 0, W, H);
+
+  const rowH = H / 3;
+  const labels = ['入力波', 'フィードバック(戻り)波', '合計(結果)'];
+  const colors = ['#4a9eff', '#e94560', '#2ecc71'];
+  const margin = 60;
+
+  for (let row = 0; row < 3; row++) {
+    const cy = row * rowH + rowH / 2;
+
+    // zero line
+    ctx1.strokeStyle = '#333';
+    ctx1.lineWidth = 0.5;
+    ctx1.setLineDash([4, 4]);
+    ctx1.beginPath();
+    ctx1.moveTo(margin, cy);
+    ctx1.lineTo(W - 20, cy);
+    ctx1.stroke();
+    ctx1.setLineDash([]);
+
+    // label
+    ctx1.fillStyle = '#666';
+    ctx1.font = '12px sans-serif';
+    ctx1.textAlign = 'right';
+    ctx1.fillText(labels[row], margin - 8, cy + 4);
+
+    // wave
+    ctx1.strokeStyle = colors[row];
+    ctx1.lineWidth = 2.5;
+    ctx1.beginPath();
+    const amp = rowH * 0.35;
+    for (let px = margin; px < W - 20; px++) {
+      const t = (px - margin) / (W - margin - 20) * 4 * Math.PI;
+      let y;
+      if (row === 0) {
+        y = Math.sin(t);
+      } else if (row === 1) {
+        y = fb * Math.sin(t + phase);
+      } else {
+        y = Math.sin(t) + fb * Math.sin(t + phase);
+      }
+      const maxAmp = row === 2 ? 1 + fb : 1;
+      const drawY = cy - (y / (1 + fb)) * amp;
+      if (px === margin) ctx1.moveTo(px, drawY);
+      else ctx1.lineTo(px, drawY);
+    }
+    ctx1.stroke();
+  }
+
+  // amplitude indicator on sum row
+  const sumAmp = Math.sqrt(1 + fb * fb + 2 * fb * Math.cos(phase));
+  const ratio = sumAmp / 1; // relative to input
+  const statusEl = document.getElementById('interference_status');
+
+  if (phase < 30 * Math.PI / 180 || phase > 330 * Math.PI / 180) {
+    statusEl.style.background = '#1a2a1e';
+    statusEl.style.color = '#2ecc71';
+    statusEl.innerHTML = `★ 強め合い — 振幅 ${ratio.toFixed(2)}倍 → <strong>共鳴！(ブースト)</strong>`;
+  } else if (phase > 150 * Math.PI / 180 && phase < 210 * Math.PI / 180) {
+    statusEl.style.background = '#2a1a1e';
+    statusEl.style.color = '#e94560';
+    statusEl.innerHTML = `✕ 打ち消し合い — 振幅 ${ratio.toFixed(2)}倍 → <strong>消去(ノッチ/カット)</strong>`;
+  } else {
+    statusEl.style.background = '#1e1e30';
+    statusEl.style.color = '#ff9e64';
+    statusEl.innerHTML = `△ 部分的な干渉 — 振幅 ${ratio.toFixed(2)}倍 → <strong>中間的な変化</strong>`;
+  }
+}
+
+sPhase.addEventListener('input', drawInterference);
+sFb.addEventListener('input', drawInterference);
+drawInterference();
+
+// ========== PAGE 2: Biquad explorer ==========
+const c2f = document.getElementById('c2_freq');
+const ctx2f = c2f.getContext('2d');
+const c2i = document.getElementById('c2_imp');
+const ctx2i = c2i.getContext('2d');
+
+function biquadResponse(b0, b1, b2, a1, a2, freq, sr) {
+  const w = 2 * Math.PI * freq / sr;
+  const cosw = Math.cos(w), sinw = Math.sin(w);
+  const cos2w = Math.cos(2 * w), sin2w = Math.sin(2 * w);
+  const numR = b0 + b1 * cosw + b2 * cos2w;
+  const numI = -(b1 * sinw + b2 * sin2w);
+  const denR = 1 + a1 * cosw + a2 * cos2w;
+  const denI = -(a1 * sinw + a2 * sin2w);
+  const numMag = Math.sqrt(numR * numR + numI * numI);
+  const denMag = Math.sqrt(denR * denR + denI * denI);
+  return numMag / (denMag || 1e-10);
+}
+
+function biquadImpulse(b0, b1, b2, a1, a2, len) {
+  const out = new Float32Array(len);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < len; i++) {
+    const x = i === 0 ? 1 : 0;
+    out[i] = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1; x1 = x;
+    y2 = y1; y1 = out[i];
+  }
+  return out;
+}
+
+function drawBiquad() {
+  const a1 = +document.getElementById('s_a1').value / 100;
+  const a2 = +document.getElementById('s_a2').value / 100;
+  const b0 = +document.getElementById('s_b0').value / 100;
+  const b1 = 0, b2 = 0;
+
+  document.getElementById('v_a1').textContent = a1.toFixed(2);
+  document.getElementById('v_a2').textContent = a2.toFixed(2);
+  document.getElementById('v_b0').textContent = b0.toFixed(2);
+
+  const sr = 48000;
+
+  // Frequency response
+  const W = c2f.width, H = c2f.height;
+  ctx2f.clearRect(0, 0, W, H);
+  ctx2f.fillStyle = '#1a1a2e';
+  ctx2f.fillRect(0, 0, W, H);
+
+  const margin = { l: 60, r: 20, t: 20, b: 30 };
+  const pw = W - margin.l - margin.r;
+  const ph = H - margin.t - margin.b;
+
+  // Grid
+  ctx2f.strokeStyle = '#333';
+  ctx2f.lineWidth = 0.5;
+  ctx2f.setLineDash([3, 3]);
+  const freqLabels = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+  for (const f of freqLabels) {
+    const x = margin.l + (Math.log10(f) - Math.log10(20)) / (Math.log10(sr / 2) - Math.log10(20)) * pw;
+    ctx2f.beginPath();
+    ctx2f.moveTo(x, margin.t);
+    ctx2f.lineTo(x, H - margin.b);
+    ctx2f.stroke();
+    ctx2f.fillStyle = '#666';
+    ctx2f.font = '10px sans-serif';
+    ctx2f.textAlign = 'center';
+    ctx2f.fillText(f >= 1000 ? (f/1000)+'k' : f, x, H - margin.b + 14);
+  }
+  const dbLabels = [-24, -12, 0, 12, 24];
+  for (const db of dbLabels) {
+    const y = margin.t + (1 - (db + 24) / 48) * ph;
+    ctx2f.beginPath();
+    ctx2f.moveTo(margin.l, y);
+    ctx2f.lineTo(W - margin.r, y);
+    ctx2f.stroke();
+    ctx2f.fillStyle = '#666';
+    ctx2f.font = '10px sans-serif';
+    ctx2f.textAlign = 'right';
+    ctx2f.fillText(db + 'dB', margin.l - 6, y + 4);
+  }
+  ctx2f.setLineDash([]);
+
+  // Hz label
+  ctx2f.fillStyle = '#666';
+  ctx2f.font = '11px sans-serif';
+  ctx2f.textAlign = 'center';
+  ctx2f.fillText('周波数 (Hz)', W / 2, H - 2);
+
+  // Response curve
+  ctx2f.strokeStyle = '#ff9e64';
+  ctx2f.lineWidth = 2.5;
+  ctx2f.beginPath();
+  let peakFreq = 20, peakDb = -100;
+  for (let px = 0; px < pw; px++) {
+    const logF = Math.log10(20) + px / pw * (Math.log10(sr / 2) - Math.log10(20));
+    const f = Math.pow(10, logF);
+    const mag = biquadResponse(b0, b1, b2, a1, a2, f, sr);
+    const db = 20 * Math.log10(mag || 1e-10);
+    if (db > peakDb) { peakDb = db; peakFreq = f; }
+    const y = margin.t + (1 - (db + 24) / 48) * ph;
+    const cy = Math.max(margin.t, Math.min(H - margin.b, y));
+    if (px === 0) ctx2f.moveTo(margin.l + px, cy);
+    else ctx2f.lineTo(margin.l + px, cy);
+  }
+  ctx2f.stroke();
+
+  // fill under
+  ctx2f.lineTo(W - margin.r, margin.t + (1 - (0 + 24) / 48) * ph);
+  ctx2f.lineTo(margin.l, margin.t + (1 - (0 + 24) / 48) * ph);
+  ctx2f.closePath();
+  ctx2f.fillStyle = 'rgba(255,158,100,0.08)';
+  ctx2f.fill();
+
+  // Impulse response
+  const W2 = c2i.width, H2 = c2i.height;
+  ctx2i.clearRect(0, 0, W2, H2);
+  ctx2i.fillStyle = '#1a1a2e';
+  ctx2i.fillRect(0, 0, W2, H2);
+
+  const imp = biquadImpulse(b0, b1, b2, a1, a2, 200);
+  const m2 = { l: 60, r: 20, t: 15, b: 25 };
+  const iw = W2 - m2.l - m2.r;
+  const ih = H2 - m2.t - m2.b;
+
+  // Zero line
+  const zeroY = m2.t + ih / 2;
+  ctx2i.strokeStyle = '#333';
+  ctx2i.lineWidth = 0.5;
+  ctx2i.setLineDash([3, 3]);
+  ctx2i.beginPath();
+  ctx2i.moveTo(m2.l, zeroY);
+  ctx2i.lineTo(W2 - m2.r, zeroY);
+  ctx2i.stroke();
+  ctx2i.setLineDash([]);
+
+  // Labels
+  ctx2i.fillStyle = '#666';
+  ctx2i.font = '10px sans-serif';
+  ctx2i.textAlign = 'right';
+  ctx2i.fillText('+', m2.l - 8, m2.t + 12);
+  ctx2i.fillText('0', m2.l - 8, zeroY + 4);
+  ctx2i.fillText('−', m2.l - 8, H2 - m2.b - 4);
+  ctx2i.textAlign = 'center';
+  ctx2i.fillText('時間 (サンプル)', W2 / 2, H2 - 3);
+  for (let s = 0; s <= 200; s += 50) {
+    const x = m2.l + s / 200 * iw;
+    ctx2i.fillText(s, x, H2 - m2.b + 14);
+  }
+
+  // Input impulse
+  ctx2i.fillStyle = '#4a9eff';
+  ctx2i.fillRect(m2.l, zeroY - ih * 0.4, 3, ih * 0.4);
+
+  // Find max for scaling
+  let maxVal = 0;
+  for (const v of imp) if (Math.abs(v) > maxVal) maxVal = Math.abs(v);
+  if (maxVal < 0.01) maxVal = 1;
+
+  // Output
+  ctx2i.strokeStyle = '#2ecc71';
+  ctx2i.lineWidth = 1.5;
+  ctx2i.beginPath();
+  for (let i = 0; i < imp.length; i++) {
+    const x = m2.l + i / imp.length * iw;
+    const y = zeroY - (imp[i] / maxVal) * (ih * 0.45);
+    if (i === 0) ctx2i.moveTo(x, y);
+    else ctx2i.lineTo(x, y);
+  }
+  ctx2i.stroke();
+
+  // Status
+  const statusEl = document.getElementById('biquad_status');
+  const qStr = a2 > 0.95 ? '非常に高い (鋭い共鳴)' : a2 > 0.8 ? '高い' : a2 > 0.5 ? '中程度' : '低い (なだらか)';
+  statusEl.innerHTML = `共鳴周波数: ~${Math.round(peakFreq)}Hz / Q: ${qStr}`;
+}
+
+function setPreset(name) {
+  const s_a1 = document.getElementById('s_a1');
+  const s_a2 = document.getElementById('s_a2');
+  const s_b0 = document.getElementById('s_b0');
+  switch (name) {
+    case 'lpf':
+      s_a1.value = -160; s_a2.value = 65; s_b0.value = 8;
+      break;
+    case 'bpf':
+      s_a1.value = -140; s_a2.value = 90; s_b0.value = 10;
+      break;
+    case 'peak':
+      s_a1.value = -120; s_a2.value = 75; s_b0.value = 30;
+      break;
+    case 'resonance':
+      s_a1.value = -185; s_a2.value = 95; s_b0.value = 5;
+      break;
+  }
+  drawBiquad();
+}
+
+document.getElementById('s_a1').addEventListener('input', drawBiquad);
+document.getElementById('s_a2').addEventListener('input', drawBiquad);
+document.getElementById('s_b0').addEventListener('input', drawBiquad);
+drawBiquad();
+
+// ========== PAGE 3: Filter types ==========
+const c3 = document.getElementById('c3');
+const ctx3 = c3.getContext('2d');
+let currentFilterType = 'lpf';
+
+function calcBiquadCoeffs(type, fc, q, gain, sr) {
+  const w0 = 2 * Math.PI * fc / sr;
+  const cosw0 = Math.cos(w0), sinw0 = Math.sin(w0);
+  const alpha = sinw0 / (2 * q);
+  const A = Math.pow(10, gain / 40);
+  let b0, b1, b2, a0, a1, a2;
+
+  switch (type) {
+    case 'lpf':
+      b1 = 1 - cosw0;
+      b0 = b1 / 2;
+      b2 = b0;
+      a0 = 1 + alpha;
+      a1 = -2 * cosw0;
+      a2 = 1 - alpha;
+      break;
+    case 'hpf':
+      b1 = -(1 + cosw0);
+      b0 = (1 + cosw0) / 2;
+      b2 = b0;
+      a0 = 1 + alpha;
+      a1 = -2 * cosw0;
+      a2 = 1 - alpha;
+      break;
+    case 'bpf':
+      b0 = alpha;
+      b1 = 0;
+      b2 = -alpha;
+      a0 = 1 + alpha;
+      a1 = -2 * cosw0;
+      a2 = 1 - alpha;
+      break;
+    case 'peak':
+      b0 = 1 + alpha * A;
+      b1 = -2 * cosw0;
+      b2 = 1 - alpha * A;
+      a0 = 1 + alpha / A;
+      a1 = -2 * cosw0;
+      a2 = 1 - alpha / A;
+      break;
+    case 'notch':
+      b0 = 1;
+      b1 = -2 * cosw0;
+      b2 = 1;
+      a0 = 1 + alpha;
+      a1 = -2 * cosw0;
+      a2 = 1 - alpha;
+      break;
+  }
+  return {
+    b0: b0/a0, b1: b1/a0, b2: b2/a0,
+    a1: a1/a0, a2: a2/a0
+  };
+}
+
+const filterDescs = {
+  lpf: '<strong>LPF (ローパスフィルタ):</strong> 設定した周波数より高い音をカット。ギターのトーンノブを絞った状態。こもった柔らかい音になる。',
+  hpf: '<strong>HPF (ハイパスフィルタ):</strong> 設定した周波数より低い音をカット。低音がスッキリする。ベースカットスイッチと同じ。',
+  bpf: '<strong>BPF (バンドパスフィルタ):</strong> 設定した周波数付近だけを通す。ワウペダルを半踏みにした状態。「ワァ」という鼻にかかった音。',
+  peak: '<strong>ピーキングEQ:</strong> 設定した周波数を持ち上げ(+dB)または削り(-dB)。パラメトリックEQの1バンド。アンプのMidノブ的な使い方。',
+  notch: '<strong>ノッチフィルタ:</strong> 設定した周波数をピンポイントで消す。ハウリングサプレッサーと同じ原理。周囲の周波数には影響しない。'
+};
+
+function setFilterType(type) {
+  currentFilterType = type;
+  document.querySelectorAll('.btn-row button[id^="ft_"]').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('ft_' + type);
+  if (btn) btn.classList.add('active');
+  document.getElementById('filter_desc').innerHTML = filterDescs[type];
+  drawFilterResponse();
+}
+
+function drawFilterResponse() {
+  const fc = +document.getElementById('s_fc').value;
+  const q = +document.getElementById('s_q').value / 100;
+  const gain = +document.getElementById('s_gain').value;
+  const sr = 48000;
+
+  document.getElementById('v_fc').textContent = fc >= 1000 ? (fc/1000).toFixed(1) + ' kHz' : fc + ' Hz';
+  document.getElementById('v_q').textContent = q.toFixed(1);
+  document.getElementById('v_gain').textContent = gain + ' dB';
+
+  const c = calcBiquadCoeffs(currentFilterType, fc, q, gain, sr);
+
+  document.getElementById('coeff_display').textContent =
+    `b0=${c.b0.toFixed(3)}  b1=${c.b1.toFixed(3)}  b2=${c.b2.toFixed(3)}  a1=${c.a1.toFixed(3)}  a2=${c.a2.toFixed(3)}`;
+
+  const W = c3.width, H = c3.height;
+  ctx3.clearRect(0, 0, W, H);
+  ctx3.fillStyle = '#1a1a2e';
+  ctx3.fillRect(0, 0, W, H);
+
+  const margin = { l: 60, r: 20, t: 20, b: 35 };
+  const pw = W - margin.l - margin.r;
+  const ph = H - margin.t - margin.b;
+
+  // Grid
+  ctx3.strokeStyle = '#333';
+  ctx3.lineWidth = 0.5;
+  ctx3.setLineDash([3, 3]);
+  const freqLabels = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+  for (const f of freqLabels) {
+    const x = margin.l + (Math.log10(f) - Math.log10(20)) / (Math.log10(sr/2) - Math.log10(20)) * pw;
+    ctx3.beginPath();
+    ctx3.moveTo(x, margin.t);
+    ctx3.lineTo(x, H - margin.b);
+    ctx3.stroke();
+    ctx3.fillStyle = '#666';
+    ctx3.font = '10px sans-serif';
+    ctx3.textAlign = 'center';
+    ctx3.fillText(f >= 1000 ? (f/1000)+'k' : f, x, H - margin.b + 14);
+  }
+  const dbLabels = [-30, -20, -10, 0, 10, 20, 30];
+  for (const db of dbLabels) {
+    const y = margin.t + (1 - (db + 30) / 60) * ph;
+    ctx3.beginPath();
+    ctx3.moveTo(margin.l, y);
+    ctx3.lineTo(W - margin.r, y);
+    ctx3.stroke();
+    ctx3.fillStyle = db === 0 ? '#888' : '#555';
+    ctx3.font = '10px sans-serif';
+    ctx3.textAlign = 'right';
+    ctx3.fillText(db + 'dB', margin.l - 6, y + 4);
+  }
+  ctx3.setLineDash([]);
+
+  // 0dB line thicker
+  const zeroDbY = margin.t + (1 - (0 + 30) / 60) * ph;
+  ctx3.strokeStyle = '#555';
+  ctx3.lineWidth = 1;
+  ctx3.beginPath();
+  ctx3.moveTo(margin.l, zeroDbY);
+  ctx3.lineTo(W - margin.r, zeroDbY);
+  ctx3.stroke();
+
+  ctx3.fillStyle = '#666';
+  ctx3.font = '11px sans-serif';
+  ctx3.textAlign = 'center';
+  ctx3.fillText('周波数 (Hz)', W / 2, H - 4);
+
+  // Response curve
+  ctx3.strokeStyle = '#ff9e64';
+  ctx3.lineWidth = 2.5;
+  ctx3.beginPath();
+  const points = [];
+  for (let px = 0; px < pw; px++) {
+    const logF = Math.log10(20) + px / pw * (Math.log10(sr/2) - Math.log10(20));
+    const f = Math.pow(10, logF);
+    const mag = biquadResponse(c.b0, c.b1, c.b2, c.a1, c.a2, f, sr);
+    const db = 20 * Math.log10(mag || 1e-10);
+    const y = margin.t + (1 - (db + 30) / 60) * ph;
+    const cy = Math.max(margin.t, Math.min(H - margin.b, y));
+    points.push({ x: margin.l + px, y: cy });
+    if (px === 0) ctx3.moveTo(margin.l + px, cy);
+    else ctx3.lineTo(margin.l + px, cy);
+  }
+  ctx3.stroke();
+
+  // Fill
+  ctx3.lineTo(W - margin.r, zeroDbY);
+  ctx3.lineTo(margin.l, zeroDbY);
+  ctx3.closePath();
+  ctx3.fillStyle = 'rgba(255,158,100,0.06)';
+  ctx3.fill();
+
+  // fc marker
+  const fcX = margin.l + (Math.log10(fc) - Math.log10(20)) / (Math.log10(sr/2) - Math.log10(20)) * pw;
+  ctx3.strokeStyle = 'rgba(255,158,100,0.4)';
+  ctx3.lineWidth = 1;
+  ctx3.setLineDash([4, 4]);
+  ctx3.beginPath();
+  ctx3.moveTo(fcX, margin.t);
+  ctx3.lineTo(fcX, H - margin.b);
+  ctx3.stroke();
+  ctx3.setLineDash([]);
+  ctx3.fillStyle = '#ff9e64';
+  ctx3.font = '11px sans-serif';
+  ctx3.textAlign = 'center';
+  ctx3.fillText('fc', fcX, margin.t - 4);
+}
+
+document.getElementById('s_fc').addEventListener('input', drawFilterResponse);
+document.getElementById('s_q').addEventListener('input', drawFilterResponse);
+document.getElementById('s_gain').addEventListener('input', drawFilterResponse);
+setFilterType('lpf');
+
+// ========== PAGE 4: Quiz ==========
+const quizData = [
+  {
+    q: 'バイクワッドの「z⁻¹」は何をする？',
+    opts: ['周波数を2倍にする', '1つ前のサンプルの値を取り出す', '音量を下げる', '位相を反転する'],
+    ans: 1,
+    explain: 'z⁻¹ は「1サンプル遅延」= 1つ前の値を覚えておくメモ帳。'
+  },
+  {
+    q: 'バイクワッドで共鳴（レゾナンス）を生むのはどの係数？',
+    opts: ['b0, b1, b2（入力側）', 'a1, a2（フィードバック側）', 'ゲイン', 'サンプリングレート'],
+    ans: 1,
+    explain: 'a1, a2 のフィードバックが出力を入力に戻すことで、入力が止まっても出力が続く = 共鳴。'
+  },
+  {
+    q: 'フィードバックのディレイが超短い(0.02ms)と何が起きる？',
+    opts: ['エコーが聞こえる', '音が歪む', '特定の周波数だけが強まる(EQ的動作)', '何も起きない'],
+    ans: 2,
+    explain: 'ディレイが短すぎると「繰り返し」としては聞こえず、波の干渉により特定の周波数だけが強まる。これがEQ動作の正体。'
+  },
+  {
+    q: 'a2 の値を 0.99 に近づけると音はどうなる？',
+    opts: ['音量が上がる', '歪みが増える', '共鳴が鋭くなり長く響く', '低域がカットされる'],
+    ans: 2,
+    explain: 'a2 が 1 に近いほどフィードバックが強い = Qが高い = 鋭く長い共鳴。ワウ全踏みの状態に近い。'
+  },
+  {
+    q: '5つの係数(b0,b1,b2,a1,a2)を変えるとフィルタの種類が変わる。これはなぜ？',
+    opts: [
+      '内部の回路が自動的に切り替わるから',
+      '波の干渉パターン（強め合う/打ち消す周波数）が変わるから',
+      'サンプリングレートが変わるから',
+      'バイクワッドの段数が変わるから'
+    ],
+    ans: 1,
+    explain: '係数が変わる = フィードバックの位相ずれが変わる = 強め合う周波数と打ち消す周波数の組み合わせが変わる = フィルタの種類が変わる。'
+  },
+  {
+    q: 'バイクワッドとリバーブの共通点と違いは？',
+    opts: [
+      '全く別の原理で動いている',
+      '同じフィードバック原理だが、ディレイの長さが違う',
+      'バイクワッドはリバーブの一種',
+      'リバーブにはフィードバックがない'
+    ],
+    ans: 1,
+    explain: 'どちらもフィードバック（出力を入力に戻す）を使う。バイクワッドは0.02msの超短ディレイ→EQ的。リバーブは数十ms以上の長いディレイ→空間的な残響。'
+  },
+  {
+    q: 'a1 の値を変えると何が変わる？',
+    opts: ['音量', '共鳴する周波数', '歪みの量', 'ステレオの幅'],
+    ans: 1,
+    explain: 'a1 は「フィードバックの位相回転量」を決める = どの周波数の波と山が合うかが変わる = 共鳴周波数が変わる。ギターで言えば「弦の長さ」に相当。'
+  },
+  {
+    q: 'アコギのボディ共鳴をバイクワッドで再現するとき、1個で足りる？',
+    opts: [
+      '1個で十分',
+      'ボディには複数の共鳴があるので、10〜30個必要',
+      'バイクワッドでは再現できない',
+      '2個あれば足りる'
+    ],
+    ans: 1,
+    explain: 'バイクワッド1個 = 1つの共鳴ピーク。アコギのボディは100Hz, 200Hz, 350Hz... と複数の周波数で同時に共鳴しているため、10〜30個の並列バイクワッドが必要。'
+  }
+];
+
+let quizState = { current: 0, correct: 0, answered: [] };
+
+function startQuiz() {
+  quizState = { current: 0, correct: 0, answered: [] };
+  document.getElementById('quiz_score').textContent = '';
+  document.getElementById('quiz_restart').style.display = 'none';
+  renderQuiz();
+}
+
+function renderQuiz() {
+  const area = document.getElementById('quiz_area');
+  if (quizState.current >= quizData.length) {
+    area.innerHTML = '';
+    const pct = Math.round(quizState.correct / quizData.length * 100);
+    let msg = '';
+    if (pct === 100) msg = '🎉 パーフェクト！バイクワッドマスター！';
+    else if (pct >= 75) msg = '👍 よくできました！';
+    else if (pct >= 50) msg = '📚 もう少し！ページ1〜3を復習してみよう';
+    else msg = '💪 各ページの解説をもう一度読んでみよう';
+    document.getElementById('quiz_score').innerHTML = `${quizState.correct} / ${quizData.length} 正解 (${pct}%)<br><span style="font-size:0.8em">${msg}</span>`;
+    document.getElementById('quiz_restart').style.display = 'flex';
+    return;
+  }
+
+  const d = quizData[quizState.current];
+  let html = `<div style="margin:16px 0;font-size:0.85em;color:#888;">問題 ${quizState.current + 1} / ${quizData.length}</div>`;
+  html += `<div style="font-size:1.1em;margin:12px 0;font-weight:bold;">${d.q}</div>`;
+  for (let i = 0; i < d.opts.length; i++) {
+    html += `<button class="quiz-option" onclick="answerQuiz(${i})" id="qopt_${i}">${d.opts[i]}</button>`;
+  }
+  html += `<div id="quiz_explain" style="display:none;margin:12px 0;"></div>`;
+  html += `<div id="quiz_next" style="display:none;text-align:center;margin:12px 0;">
+    <button onclick="nextQuestion()">次の問題 →</button>
+  </div>`;
+  area.innerHTML = html;
+}
+
+function answerQuiz(idx) {
+  if (quizState.answered.includes(quizState.current)) return;
+  quizState.answered.push(quizState.current);
+
+  const d = quizData[quizState.current];
+  const correct = idx === d.ans;
+  if (correct) quizState.correct++;
+
+  for (let i = 0; i < d.opts.length; i++) {
+    const btn = document.getElementById('qopt_' + i);
+    btn.disabled = true;
+    if (i === d.ans) btn.classList.add('correct');
+    else if (i === idx && !correct) btn.classList.add('wrong');
+  }
+
+  const explainEl = document.getElementById('quiz_explain');
+  explainEl.style.display = 'block';
+  explainEl.innerHTML = `<div class="explanation ${correct ? 'green' : 'highlight'}">
+    <strong>${correct ? '✓ 正解！' : '✕ 不正解'}</strong><br>${d.explain}
+  </div>`;
+
+  document.getElementById('quiz_next').style.display = 'block';
+}
+
+function nextQuestion() {
+  quizState.current++;
+  renderQuiz();
+}
+
+startQuiz();
+</script>
+</body>
+</html>

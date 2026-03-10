@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" font-family="'Segoe UI', Arial, sans-serif" font-size="13">
+  <rect width="700" height="260" rx="12" fill="#1a1a2e"/>
+  <text x="350" y="28" text-anchor="middle" fill="#ff9e64" font-weight="bold" font-size="15">LFO (Low Frequency Oscillator)</text>
+  <text x="350" y="48" text-anchor="middle" fill="#888" font-size="12">人間に聞こえないくらい遅い波 (0.1~10Hz) でパラメータを揺らす</text>
+
+  <!-- LFO waveform -->
+  <g transform="translate(30,60)">
+    <line x1="20" y1="50" x2="360" y2="50" stroke="#444" stroke-width="0.5" stroke-dasharray="3,3"/>
+    <path d="M20,50 Q40,10 60,10 Q80,10 100,50 Q120,90 140,90 Q160,90 180,50 Q200,10 220,10 Q240,10 260,50 Q280,90 300,90 Q320,90 340,50" fill="none" stroke="#ff9e64" stroke-width="2.5"/>
+    <text x="370" y="55" fill="#888" font-size="11">(1Hz のサイン波)</text>
+  </g>
+
+  <!-- Arrows to effects -->
+  <g transform="translate(30,130)">
+    <!-- Line from LFO -->
+    <line x1="180" y1="0" x2="180" y2="10" stroke="#ff9e64" stroke-width="1.5"/>
+
+    <!-- Effect rows -->
+    <g transform="translate(0,20)">
+      <rect x="30" y="-5" width="130" height="24" rx="6" fill="#4a9eff" opacity="0.15" stroke="#4a9eff" stroke-width="1"/>
+      <text x="95" y="12" text-anchor="middle" fill="#4a9eff" font-size="11">フィルタ周波数を揺らす</text>
+      <text x="180" y="12" fill="#888" font-size="11">→</text>
+      <text x="200" y="12" fill="#ccc" font-size="12" font-weight="bold">ワウ / オートワウ</text>
+    </g>
+    <g transform="translate(0,48)">
+      <rect x="30" y="-5" width="130" height="24" rx="6" fill="#2ecc71" opacity="0.15" stroke="#2ecc71" stroke-width="1"/>
+      <text x="95" y="12" text-anchor="middle" fill="#2ecc71" font-size="11">音量を揺らす</text>
+      <text x="180" y="12" fill="#888" font-size="11">→</text>
+      <text x="200" y="12" fill="#ccc" font-size="12" font-weight="bold">トレモロ</text>
+    </g>
+    <g transform="translate(0,76)">
+      <rect x="30" y="-5" width="130" height="24" rx="6" fill="#e94560" opacity="0.15" stroke="#e94560" stroke-width="1"/>
+      <text x="95" y="12" text-anchor="middle" fill="#e94560" font-size="11">ピッチを揺らす</text>
+      <text x="180" y="12" fill="#888" font-size="11">→</text>
+      <text x="200" y="12" fill="#ccc" font-size="12" font-weight="bold">ビブラート</text>
+    </g>
+
+    <!-- Acoustic sim use -->
+    <rect x="400" y="-5" width="270" height="110" rx="8" fill="#2a1a3e" stroke="#9b59b6" stroke-width="1"/>
+    <text x="415" y="18" fill="#9b59b6" font-weight="bold" font-size="12">アコシミュでの使い方:</text>
+    <text x="415" y="42" fill="#ccc" font-size="11">±0.1% の超微小な音量揺れ</text>
+    <text x="415" y="62" fill="#ccc" font-size="11">→ アコギの「生きた」ビート感</text>
+    <text x="415" y="86" fill="#888" font-size="10">意識して聞こえない程度だが</text>
+    <text x="415" y="100" fill="#888" font-size="10">無いと「機械的」に聞こえる</text>
+  </g>
+</svg>
