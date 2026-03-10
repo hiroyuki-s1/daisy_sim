@@ -1,7 +1,7 @@
 /**
- * HATL Host (PC-side)
+ * BenchHost (PC-side bench test controller)
  *
- * Connects to a Daisy Seed running HATL firmware via USB serial.
+ * Connects to a Daisy Seed running bench firmware via USB serial.
  * Sends control data (knobs, switches) from the PC GUI.
  * Receives status data (LEDs, OLED framebuffer) from the Daisy.
  *
@@ -10,8 +10,8 @@
 
 #pragma once
 
-#include "hatl_protocol.h"
-#include "../shared/platform/platform.h"
+#include "bench_protocol.h"
+#include "../../lib/platform.h"
 #include <string>
 #include <atomic>
 #include <thread>
@@ -19,10 +19,10 @@
 
 namespace DaisyFX {
 
-class HATLHost : public Platform {
+class BenchHost : public Platform {
 public:
-    HATLHost();
-    ~HATLHost() override;
+    BenchHost();
+    ~BenchHost() override;
 
     /**
      * Connect to Daisy Seed via serial port.

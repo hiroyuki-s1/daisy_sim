@@ -1,7 +1,7 @@
 /**
- * HATL Firmware - Daisy Seed side
+ * Bench Firmware - Daisy Seed side
  *
- * Runs on the Daisy Seed when in HATL (Hardware-Abstracted Testing Layer) mode.
+ * Runs on the Daisy Seed in bench test mode (USB connected to PC).
  * Receives control data (knobs, switches) from PC via USB serial.
  * Sends status data (LEDs, OLED, audio levels) back to PC.
  * DSP processing runs on the Daisy Seed with real audio I/O.
@@ -18,12 +18,12 @@
 #include "overdrive_effect.h"
 #include "chorus_effect.h"
 
-// HATL protocol
-#include "../../hatl/hatl_protocol.h"
+// Bench protocol
+#include "../bench_protocol.h"
 
 using namespace daisy;
 using namespace DaisyFX;
-using namespace DaisyFX::HATL;
+using namespace DaisyFX::Bench;
 
 static DaisyPod hw;
 
@@ -131,7 +131,7 @@ static void SendResponse(uint8_t type, const void* payload, uint16_t len)
     header[4] = (uint8_t)(len >> 8);
 
     // CRC over type + len + payload
-    uint8_t crc_data[3 + HATL::MAX_PAYLOAD];
+    uint8_t crc_data[3 + Bench::MAX_PAYLOAD];
     crc_data[0] = type;
     crc_data[1] = header[3];
     crc_data[2] = header[4];
@@ -192,7 +192,7 @@ static void ProcessPacket(uint8_t type, const uint8_t* payload, uint16_t len)
             break;
 
         case PacketType::SYS_VERSION: {
-            const char* ver = "HATL-FW v1.0";
+            const char* ver = "BENCH-FW v1.0";
             SendResponse((uint8_t)ResponseType::SYS_VERSION_RSP, ver, strlen(ver) + 1);
             break;
         }

@@ -1,9 +1,9 @@
-# HATL Firmware - Daisy Seed side
+# Bench Firmware - Daisy Seed side
 #
 # Build: make
 # Flash: make program-dfu
 
-TARGET = hatl_firmware
+TARGET = bench_firmware
 
 CPP_SOURCES = \
     main.cpp \
@@ -21,7 +21,7 @@ C_INCLUDES += \
     -I../../../lib/modulation \
     -I../../../lib/dynamics \
     -I../../../lib/reverb \
-    -I../../hatl
+    -I..
 
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile

@@ -1,12 +1,12 @@
 /**
- * HATL Host - PC-side serial communication with Daisy Seed
+ * BenchHost - PC-side serial communication with Daisy Seed
  *
  * Platform-specific serial I/O:
  *   - Windows: Win32 CreateFile/ReadFile/WriteFile on COMx
  *   - Linux/Mac: POSIX open/read/write on /dev/ttyACMx
  */
 
-#include "hatl_host.h"
+#include "bench_host.h"
 #include <cstring>
 #include <chrono>
 
@@ -22,14 +22,14 @@
 
 namespace DaisyFX {
 
-HATLHost::HATLHost() = default;
+BenchHost::BenchHost() = default;
 
-HATLHost::~HATLHost()
+BenchHost::~BenchHost()
 {
     Disconnect();
 }
 
-bool HATLHost::Connect(const std::string& port_name, int baud_rate)
+bool BenchHost::Connect(const std::string& port_name, int baud_rate)
 {
     Disconnect();
 
@@ -112,7 +112,7 @@ bool HATLHost::Connect(const std::string& port_name, int baud_rate)
 
     // Start reader thread
     reader_running_ = true;
-    reader_thread_ = std::thread(&HATLHost::ReaderThread, this);
+    reader_thread_ = std::thread(&BenchHost::ReaderThread, this);
 
     // Verify connection with ping
     int rtt = Ping(500);
@@ -124,7 +124,7 @@ bool HATLHost::Connect(const std::string& port_name, int baud_rate)
     return true;
 }
 
-void HATLHost::Disconnect()
+void BenchHost::Disconnect()
 {
     reader_running_ = false;
     if (reader_thread_.joinable())
@@ -145,19 +145,19 @@ void HATLHost::Disconnect()
 #endif
 }
 
-bool HATLHost::SendPacket(uint8_t type, const void* payload, uint16_t len)
+bool BenchHost::SendPacket(uint8_t type, const void* payload, uint16_t len)
 {
     if (!connected_) return false;
 
-    uint8_t buf[HATL::MAX_PAYLOAD + 6]; // header(5) + payload + crc(1)
-    buf[0] = HATL::SYNC0;
-    buf[1] = HATL::SYNC1;
+    uint8_t buf[Bench::MAX_PAYLOAD + 6]; // header(5) + payload + crc(1)
+    buf[0] = Bench::SYNC0;
+    buf[1] = Bench::SYNC1;
     buf[2] = type;
     buf[3] = (uint8_t)(len & 0xFF);
     buf[4] = (uint8_t)(len >> 8);
     if (len > 0 && payload)
         std::memcpy(&buf[5], payload, len);
-    buf[5 + len] = HATL::crc8(&buf[2], 3 + len); // CRC over type+len+payload
+    buf[5 + len] = Bench::crc8(&buf[2], 3 + len); // CRC over type+len+payload
 
     std::lock_guard<std::mutex> lock(send_mutex_);
 
@@ -170,9 +170,9 @@ bool HATLHost::SendPacket(uint8_t type, const void* payload, uint16_t len)
 #endif
 }
 
-void HATLHost::SendControls()
+void BenchHost::SendControls()
 {
-    HATL::CtrlAllPayload ctrl;
+    Bench::CtrlAllPayload ctrl;
     for (int i = 0; i < 4; i++)
         ctrl.knobs[i] = (uint16_t)(knob_values_[i] * 4095.0f);
     ctrl.switches = 0;
@@ -181,33 +181,33 @@ void HATLHost::SendControls()
     ctrl.encoder_pos = (int16_t)encoder_pos_;
     ctrl.encoder_pressed = encoder_pressed_ ? 1 : 0;
 
-    SendPacket((uint8_t)HATL::PacketType::CTRL_ALL, &ctrl, sizeof(ctrl));
+    SendPacket((uint8_t)Bench::PacketType::CTRL_ALL, &ctrl, sizeof(ctrl));
 }
 
-void HATLHost::SendEffectSelect(int effect_index)
+void BenchHost::SendEffectSelect(int effect_index)
 {
     uint8_t idx = (uint8_t)effect_index;
-    SendPacket((uint8_t)HATL::PacketType::CMD_EFFECT_SEL, &idx, 1);
+    SendPacket((uint8_t)Bench::PacketType::CMD_EFFECT_SEL, &idx, 1);
 }
 
-void HATLHost::SendParamSet(int param_index, float value)
+void BenchHost::SendParamSet(int param_index, float value)
 {
-    HATL::ParamSetPayload p;
+    Bench::ParamSetPayload p;
     p.param_index = (uint8_t)param_index;
     p.value = (uint16_t)(value * 4095.0f);
-    SendPacket((uint8_t)HATL::PacketType::CMD_PARAM_SET, &p, sizeof(p));
+    SendPacket((uint8_t)Bench::PacketType::CMD_PARAM_SET, &p, sizeof(p));
 }
 
-void HATLHost::SendBypass(bool bypass)
+void BenchHost::SendBypass(bool bypass)
 {
     uint8_t b = bypass ? 1 : 0;
-    SendPacket((uint8_t)HATL::PacketType::CMD_BYPASS, &b, 1);
+    SendPacket((uint8_t)Bench::PacketType::CMD_BYPASS, &b, 1);
 }
 
-int HATLHost::Ping(int timeout_ms)
+int BenchHost::Ping(int timeout_ms)
 {
     auto t0 = std::chrono::steady_clock::now();
-    SendPacket((uint8_t)HATL::PacketType::SYS_PING, nullptr, 0);
+    SendPacket((uint8_t)Bench::PacketType::SYS_PING, nullptr, 0);
 
     // Wait for PONG (simple polling)
     auto deadline = t0 + std::chrono::milliseconds(timeout_ms);
@@ -221,7 +221,7 @@ int HATLHost::Ping(int timeout_ms)
     return -1;
 }
 
-void HATLHost::ReaderThread()
+void BenchHost::ReaderThread()
 {
     uint8_t buf[2048];
 
@@ -245,7 +245,7 @@ void HATLHost::ReaderThread()
         // Parse received packets
         // Simple state machine: scan for SYNC0+SYNC1, then parse header
         for (int i = 0; i < bytes_read - 5; i++) {
-            if (buf[i] != HATL::SYNC0 || buf[i + 1] != HATL::SYNC1)
+            if (buf[i] != Bench::SYNC0 || buf[i + 1] != Bench::SYNC1)
                 continue;
 
             uint8_t type = buf[i + 2];
@@ -255,7 +255,7 @@ void HATLHost::ReaderThread()
                 break; // incomplete packet
 
             // Verify CRC
-            uint8_t expected_crc = HATL::crc8(&buf[i + 2], 3 + len);
+            uint8_t expected_crc = Bench::crc8(&buf[i + 2], 3 + len);
             if (buf[i + 5 + len] != expected_crc)
                 continue; // CRC mismatch
 
@@ -263,21 +263,21 @@ void HATLHost::ReaderThread()
             const uint8_t* payload = &buf[i + 5];
             std::lock_guard<std::mutex> lock(recv_mutex_);
 
-            switch ((HATL::ResponseType)type) {
-                case HATL::ResponseType::STATUS_LEDS:
+            switch ((Bench::ResponseType)type) {
+                case Bench::ResponseType::STATUS_LEDS:
                     if (len >= 4) {
                         for (int j = 0; j < 4; j++)
                             recv_led_values_[j] = payload[j] / 255.0f;
                     }
                     break;
 
-                case HATL::ResponseType::STATUS_OLED:
+                case Bench::ResponseType::STATUS_OLED:
                     if (len >= 1024) {
                         std::memcpy(recv_oled_buffer_, payload, 1024);
                     }
                     break;
 
-                case HATL::ResponseType::STATUS_LEVELS:
+                case Bench::ResponseType::STATUS_LEVELS:
                     if (len >= 4) {
                         uint16_t il = payload[0] | (payload[1] << 8);
                         uint16_t ol = payload[2] | (payload[3] << 8);
@@ -286,9 +286,9 @@ void HATLHost::ReaderThread()
                     }
                     break;
 
-                case HATL::ResponseType::STATUS_ALL:
-                    if (len >= sizeof(HATL::StatusAllPayload)) {
-                        auto* s = (const HATL::StatusAllPayload*)payload;
+                case Bench::ResponseType::STATUS_ALL:
+                    if (len >= sizeof(Bench::StatusAllPayload)) {
+                        auto* s = (const Bench::StatusAllPayload*)payload;
                         for (int j = 0; j < 4; j++)
                             recv_led_values_[j] = s->leds[j] / 255.0f;
                         input_level_  = s->input_level / 4095.0f;
@@ -305,7 +305,7 @@ void HATLHost::ReaderThread()
     }
 }
 
-void HATLHost::ProcessReceived()
+void BenchHost::ProcessReceived()
 {
     // Data is already processed by reader thread
     // This method exists for future sync-point needs
@@ -313,45 +313,45 @@ void HATLHost::ProcessReceived()
 
 // --- Platform interface ---
 
-float HATLHost::GetKnobValue(int id) const
+float BenchHost::GetKnobValue(int id) const
 {
     return (id >= 0 && id < 4) ? knob_values_[id] : 0.0f;
 }
 
-bool HATLHost::GetSwitchState(int id) const
+bool BenchHost::GetSwitchState(int id) const
 {
     return (id >= 0 && id < 4) ? switch_states_[id] : false;
 }
 
-void HATLHost::SetLed(int id, float brightness)
+void BenchHost::SetLed(int id, float brightness)
 {
     if (id >= 0 && id < 4)
         recv_led_values_[id] = brightness;
 }
 
-void HATLHost::SetKnobValue(int id, float value)
+void BenchHost::SetKnobValue(int id, float value)
 {
     if (id >= 0 && id < 4)
         knob_values_[id] = value;
 }
 
-void HATLHost::SetSwitchState(int id, bool state)
+void BenchHost::SetSwitchState(int id, bool state)
 {
     if (id >= 0 && id < 4)
         switch_states_[id] = state;
 }
 
-float HATLHost::GetReceivedLed(int id) const
+float BenchHost::GetReceivedLed(int id) const
 {
     return (id >= 0 && id < 4) ? recv_led_values_[id] : 0.0f;
 }
 
-void HATLHost::OledClear()
+void BenchHost::OledClear()
 {
     std::memset(oled_buffer_, 0, sizeof(oled_buffer_));
 }
 
-void HATLHost::OledDrawPixel(int x, int y, bool on)
+void BenchHost::OledDrawPixel(int x, int y, bool on)
 {
     if (x < 0 || x >= OLED_WIDTH || y < 0 || y >= OLED_HEIGHT) return;
     int byte_idx = x + (y / 8) * OLED_WIDTH;
@@ -362,20 +362,20 @@ void HATLHost::OledDrawPixel(int x, int y, bool on)
         oled_buffer_[byte_idx] &= ~(1 << bit);
 }
 
-void HATLHost::OledPrint(int x, int y, const char* text)
+void BenchHost::OledPrint(int x, int y, const char* text)
 {
     (void)x; (void)y; (void)text;
-    // HATL mode: text rendering happens on Daisy side
+    // Bench mode: text rendering happens on Daisy side
     // PC just displays the received framebuffer
 }
 
-void HATLHost::OledUpdate()
+void BenchHost::OledUpdate()
 {
-    // In HATL mode, we don't send OLED data to Daisy.
+    // In bench mode, we don't send OLED data to Daisy.
     // The Daisy renders its own OLED and sends framebuffer back to PC.
 }
 
-uint32_t HATLHost::GetTimeMs() const
+uint32_t BenchHost::GetTimeMs() const
 {
     auto now = std::chrono::steady_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());

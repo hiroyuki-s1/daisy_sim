@@ -1,5 +1,5 @@
 /**
- * HATL (Hardware-Abstracted Testing Layer) Protocol
+ * Bench Protocol (USB serial communication)
  *
  * Binary protocol for USB serial communication between PC and Daisy Seed.
  *
@@ -17,7 +17,7 @@
 #include <cstdint>
 
 namespace DaisyFX {
-namespace HATL {
+namespace Bench {
 
 // =========================================================================
 // Framing
@@ -122,5 +122,5 @@ inline uint8_t crc8(const uint8_t* data, size_t len)
     return crc;
 }
 
-} // namespace HATL
+} // namespace Bench
 } // namespace DaisyFX

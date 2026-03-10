@@ -2,7 +2,7 @@
  * Portable Effect Interface
  *
  * Base class for all effects. Compiles on both:
- *   - PC (SITL/HATL) with standard C++ compiler
+ *   - PC (SIM_MODE/BENCH_MODE) with standard C++ compiler
  *   - Daisy Seed (ARM Cortex-M7) with arm-none-eabi-gcc
  *
  * Rules for portable effects:

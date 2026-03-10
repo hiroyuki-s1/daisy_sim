@@ -1,13 +1,13 @@
 /**
  * Platform Abstraction Layer
  *
- * Provides a unified interface for hardware access across build targets:
- *   - SITL: SimHAL (PC simulation, all emulated)
- *   - HATL: SerialHAL (PC ↔ Daisy via USB serial)
- *   - FIRMWARE: DaisyPod/DaisySeed (real hardware)
+ * Provides a unified interface for hardware access across build modes:
+ *   - SIM_MODE: SimHAL (PC simulation, all emulated)
+ *   - BENCH_MODE: BenchHost (PC ↔ Daisy via USB serial)
+ *   - PEDAL_MODE: DaisyPod/DaisySeed (real hardware)
  *
  * Effects use this interface to read knobs, set LEDs, etc.
- * The implementation is selected at build time via DAISY_TARGET.
+ * The implementation is selected at build time via DAISY_MODE.
  */
 
 #pragma once
@@ -18,20 +18,20 @@
 namespace DaisyFX {
 
 /**
- * Build target enumeration
+ * Build mode enumeration
  */
-enum class BuildTarget {
-    SITL,       // Software-In-The-Loop (full PC simulation)
-    HATL,       // Hardware-Abstracted Testing Layer (USB serial to Daisy)
-    FIRMWARE    // Native Daisy Seed firmware (ARM cross-compile)
+enum class BuildMode {
+    SIM_MODE,       // PC Simulator (full PC simulation)
+    BENCH_MODE,     // Bench Test (USB serial to Daisy)
+    PEDAL_MODE      // Native Daisy Seed firmware (ARM cross-compile)
 };
 
 /**
  * Platform interface - abstract hardware access
  *
- * On SITL: implemented by SimHAL (ImGui knobs, PortAudio)
- * On HATL: implemented by SerialHAL (USB serial to real Daisy)
- * On FIRMWARE: thin wrapper around DaisyPod/DaisySeed
+ * On SIM_MODE: implemented by SimHAL (ImGui knobs, PortAudio)
+ * On BENCH_MODE: implemented by BenchHost (USB serial to real Daisy)
+ * On PEDAL_MODE: thin wrapper around DaisyPod/DaisySeed
  */
 class Platform {
 public:

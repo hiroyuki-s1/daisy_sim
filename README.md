@@ -6,17 +6,17 @@ Daisy Seed用マルチエフェクター開発プラットフォーム。
 ```mermaid
 graph TB
     LIB["lib/<br/>ポータブルエフェクト<br/>(PC・ARM共通)"]
-    SITL["src/sitl/<br/>SITL<br/>PC全エミュレーション"]
-    HATL["src/hatl/<br/>HATL<br/>USB接続ハイブリッド"]
-    PEDAL["src/pedal/<br/>FIRMWARE<br/>Daisy実機ファーム"]
+    SIM["src/sim/<br/>SIM_MODE<br/>PC全エミュレーション"]
+    BENCH["src/bench/<br/>BENCH_MODE<br/>USB接続ベンチテスト"]
+    PEDAL["src/pedal/<br/>PEDAL_MODE<br/>Daisy実機ファーム"]
 
-    LIB --> SITL
-    LIB --> HATL
+    LIB --> SIM
+    LIB --> BENCH
     LIB --> PEDAL
 
     style LIB fill:#2d6,stroke:#fff,color:#fff
-    style SITL fill:#38c,stroke:#fff,color:#fff
-    style HATL fill:#c83,stroke:#fff,color:#fff
+    style SIM fill:#38c,stroke:#fff,color:#fff
+    style BENCH fill:#c83,stroke:#fff,color:#fff
     style PEDAL fill:#c36,stroke:#fff,color:#fff
 ```
 
@@ -26,24 +26,24 @@ graph TB
 
 | モード | 説明 | 出力 | 用途 |
 |--------|------|------|------|
-| **SITL** | Software-In-The-Loop — PC上で全てエミュレーション | `DaisySim.exe` | 開発・デバッグ・実機なし動作確認 |
-| **HATL** | Hardware-Abstracted Testing Layer — PC↔Daisy USB通信 | `DaisyHATL.exe` + FW | 実機DSPテスト・ハードウェア検証 |
-| **FIRMWARE** | Daisy Seedネイティブファームウェア（ARM Cortex-M7） | `.bin` / `.elf` | 本番用ファームウェア書き込み |
+| **SIM_MODE** | PCシミュレータ — PC上で全てエミュレーション | `DaisySim.exe` | 開発・デバッグ・実機なし動作確認 |
+| **BENCH_MODE** | ベンチテスト — PC↔Daisy USB通信 | `DaisyBench.exe` + FW | 実機DSPテスト・ハードウェア検証 |
+| **PEDAL_MODE** | Daisy Seedネイティブファームウェア（ARM Cortex-M7） | `.bin` / `.elf` | 本番用ファームウェア書き込み |
 
 ```mermaid
 flowchart LR
-    subgraph SITL["SITL (PC)"]
+    subgraph SIM["SIM_MODE (PC)"]
         direction TB
         S1[ImGui GUI] --> S2[PortAudio<br/>ASIO/WASAPI]
         S2 --> S3[DSP処理<br/>lib/ エフェクト]
     end
 
-    subgraph HATL["HATL (PC↔Daisy)"]
+    subgraph BENCH["BENCH_MODE (PC↔Daisy)"]
         direction TB
         H1[ImGui GUI] -->|USB Serial| H2[Daisy Seed<br/>DSP実行]
     end
 
-    subgraph FW["FIRMWARE (Daisy)"]
+    subgraph FW["PEDAL_MODE (Daisy)"]
         direction TB
         F1[Daisy Pod<br/>ノブ・LED] --> F2[ARM DSP<br/>lib/ エフェクト]
     end
@@ -55,7 +55,7 @@ flowchart LR
 
 ```
 daisy_sim/
-├── CMakeLists.txt          # ルートCMake (DAISY_TARGET切替)
+├── CMakeLists.txt          # ルートCMake (DAISY_MODE切替)
 ├── cmake/
 │   └── local.cmake         # ユーザー固有設定 (.gitignore対象)
 │
@@ -75,7 +75,7 @@ daisy_sim/
 │   └── reverb/             #   リバーブ (将来追加)
 │
 ├── src/
-│   ├── sitl/               # SITL (PCシミュレータ)
+│   ├── sim/                # SIM_MODE (PCシミュレータ)
 │   │   ├── main.cpp, app.cpp/h
 │   │   ├── daisysp_wrapper.h  # 12種エフェクト実装
 │   │   ├── audio/          #   PortAudio (ASIO/WASAPI)
@@ -83,15 +83,15 @@ daisy_sim/
 │   │   ├── hal/            #   SimHAL (HWエミュレーション)
 │   │   └── external/imgui/ #   Dear ImGui
 │   │
-│   ├── pedal/              # FIRMWARE (DaisyExamplesパターン)
+│   ├── pedal/              # PEDAL_MODE (DaisyExamplesパターン)
 │   │   └── Delay/
 │   │       ├── Delay.cpp   #   lib/delay/ を使用
 │   │       └── Makefile    #   libDaisy Makefileシステム
 │   │
-│   └── hatl/               # HATL (USB通信)
-│       ├── hatl_protocol.h #   バイナリプロトコル定義
-│       ├── hatl_host.h/cpp #   PC側ホスト
-│       └── firmware/       #   Daisy側HATL FW
+│   └── bench/              # BENCH_MODE (USB通信)
+│       ├── bench_protocol.h #  バイナリプロトコル定義
+│       ├── bench_host.h/cpp #  PC側ホスト
+│       └── firmware/       #   Daisy側ベンチFW
 │           ├── main.cpp
 │           └── Makefile
 │
@@ -114,31 +114,31 @@ daisy_sim/
 |------|-----------|
 | **Windows** | MSYS2 UCRT64 (gcc, cmake, ninja, SDL2, PortAudio) |
 | **Linux/WSL** | cmake, g++, libsdl2-dev, portaudio19-dev |
-| **FIRMWARE** | ARM GCC (`arm-none-eabi-gcc`) + libDaisy + DaisySP |
+| **PEDAL_MODE** | ARM GCC (`arm-none-eabi-gcc`) + libDaisy + DaisySP |
 
-### SITL（PCシミュレータ）
+### SIM_MODE（PCシミュレータ）
 
 ```bash
 # Windows (MSYS2 UCRT64 or Git Bash)
 PATH="/c/msys64/ucrt64/bin:$PATH"
-cmake -B build/sitl -DDAISY_TARGET=SITL -G Ninja
-ninja -C build/sitl
-./build/sitl/DaisySim.exe
+cmake -B build/sim -DDAISY_MODE=SIM_MODE -G Ninja
+ninja -C build/sim
+./build/sim/DaisySim.exe
 ```
 
-### HATL（USB接続テスト）
+### BENCH_MODE（USBベンチテスト）
 
 ```bash
 # PC側ホスト
 PATH="/c/msys64/ucrt64/bin:$PATH"
-cmake -B build/hatl -DDAISY_TARGET=HATL -G Ninja
-ninja -C build/hatl
+cmake -B build/bench -DDAISY_MODE=BENCH_MODE -G Ninja
+ninja -C build/bench
 
 # Daisy側ファームウェア (ARM toolchain必要)
-cd src/hatl/firmware && make && make program-dfu
+cd src/bench/firmware && make && make program-dfu
 ```
 
-### FIRMWARE（実機ファームウェア）
+### PEDAL_MODE（実機ファームウェア）
 
 ```bash
 # libDaisy Makefileシステム使用
@@ -180,7 +180,7 @@ ZOOM MS-50G+のリバースエンジニアリングを元に実装した12種の
 
 ### ポータブルエフェクト (lib/)
 
-PC (SITL/HATL) とDaisy Seed (FIRMWARE) の両方でコンパイル可能な共通エフェクトコード。
+PC (SIM_MODE/BENCH_MODE) とDaisy Seed (PEDAL_MODE) の両方でコンパイル可能な共通エフェクトコード。
 
 ```cpp
 // lib/effect_interface.h
@@ -197,7 +197,7 @@ class EffectBase {
 
 ## アーキテクチャ
 
-### 信号フロー (SITLモード)
+### 信号フロー (SIM_MODE)
 
 ```mermaid
 flowchart LR
@@ -216,13 +216,13 @@ flowchart LR
     end
 ```
 
-### HATL プロトコル
+### Bench プロトコル
 
 PC↔Daisy Seed間のUSBシリアル通信 (115200 baud CDC仮想シリアル)。
 
 ```mermaid
 sequenceDiagram
-    participant PC as PC (DaisyHATL)
+    participant PC as PC (DaisyBench)
     participant Daisy as Daisy Seed
 
     loop 60Hz
@@ -286,9 +286,9 @@ classDiagram
     EffectBase <|-- ChorusEffect
 
     DaisySPEffect --> EffectBase : uses lib/ effects
-    DaisySPEffect --> "SITL専用エフェクト" : Comp, DIST1, etc.
+    DaisySPEffect --> "SIM専用エフェクト" : Comp, DIST1, etc.
 
-    note for DaisySPEffect "src/sitl/daisysp_wrapper.h\nSITL専用モノリシック実装"
+    note for DaisySPEffect "src/sim/daisysp_wrapper.h\nSIM_MODE専用モノリシック実装"
     note for EffectBase "lib/effect_interface.h\nPC・ARM両対応"
 ```
 
@@ -298,12 +298,12 @@ classDiagram
 
 ### ファームウェア対応エフェクト (推奨)
 
-`lib/` に追加すれば、SITL・HATL・FIRMWAREすべてで使えます。
+`lib/` に追加すれば、SIM_MODE・BENCH_MODE・PEDAL_MODEすべてで使えます。
 
 ```mermaid
 flowchart TB
     A["1. lib/modulation/my_effect.h/cpp 作成"] --> B["2. CMakeLists.txt に登録"]
-    B --> C["3. src/sitl/ でSITLテスト"]
+    B --> C["3. src/sim/ でSIM_MODEテスト"]
     C --> D["4. src/pedal/MyEffect/ 作成"]
     D --> E["5. make && make program-dfu"]
 
@@ -364,8 +364,8 @@ include $(SYSTEM_FILES_DIR)/Makefile
 #### 4. ビルド & 書き込み
 
 ```bash
-# SITLでテスト
-PATH="/c/msys64/ucrt64/bin:$PATH" ninja -C build/sitl
+# SIM_MODEでテスト
+PATH="/c/msys64/ucrt64/bin:$PATH" ninja -C build/sim
 
 # Daisyに書き込み
 cd src/pedal/MyEffect && make && make program-dfu

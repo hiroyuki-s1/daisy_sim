@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Include paths
 # ==============================================================================
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/../lib)
-set(SITL_DIR ${CMAKE_SOURCE_DIR}/../src/sitl)
+set(SIM_DIR ${CMAKE_SOURCE_DIR}/../src/sim)
 
 include_directories(
     ${LIB_DIR}
@@ -16,7 +16,7 @@ include_directories(
     ${LIB_DIR}/delay
     ${LIB_DIR}/drive
     ${LIB_DIR}/modulation
-    ${SITL_DIR}
+    ${SIM_DIR}
 )
 
 # DaisySP headers (optional)
