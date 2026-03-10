@@ -146,4 +146,66 @@ struct OnePole {
     float Process(float in) { lp_ += coeff_ * (in - lp_); return lp_; }
 };
 
+/**
+ * Feedback comb filter with damping (Freeverb-style)
+ */
+class CombFilter {
+public:
+    static const int MAX_SIZE = 2048;
+    void SetSize(int n) {
+        size_ = (n > 0 && n < MAX_SIZE) ? n : MAX_SIZE - 1;
+        pos_ = 0;
+        std::fill(buf_, buf_ + MAX_SIZE, 0.0f);
+    }
+    void SetFeedback(float f) { feedback_ = f; }
+    void SetDamp(float d) { damp1_ = d; damp2_ = 1.0f - d; }
+    float Process(float in) {
+        float out = buf_[pos_];
+        filterstore_ = out * damp2_ + filterstore_ * damp1_;
+        buf_[pos_] = in + filterstore_ * feedback_;
+        if (++pos_ >= size_) pos_ = 0;
+        return out;
+    }
+private:
+    float buf_[MAX_SIZE] = {};
+    int pos_ = 0, size_ = 1116;
+    float feedback_ = 0.84f, damp1_ = 0.2f, damp2_ = 0.8f, filterstore_ = 0.0f;
+};
+
+/**
+ * All-pass filter (Freeverb/diffusion)
+ */
+class AllPassFilter {
+public:
+    static const int MAX_SIZE = 1024;
+    void SetSize(int n) {
+        size_ = (n > 0 && n < MAX_SIZE) ? n : MAX_SIZE - 1;
+        pos_ = 0;
+        std::fill(buf_, buf_ + MAX_SIZE, 0.0f);
+    }
+    float Process(float in) {
+        float out = buf_[pos_];
+        buf_[pos_] = in + out * 0.5f;
+        if (++pos_ >= size_) pos_ = 0;
+        return out - in;
+    }
+private:
+    float buf_[MAX_SIZE] = {};
+    int pos_ = 0, size_ = 556;
+};
+
+/**
+ * 1st-order allpass (for phaser stages)
+ */
+struct Allpass1 {
+    float coeff = 0.0f;
+    float z1 = 0.0f;
+    float Process(float in) {
+        float out = z1 + coeff * in;
+        z1 = in - coeff * out;
+        return out;
+    }
+    void Reset() { z1 = 0.0f; }
+};
+
 } // namespace DaisyFX

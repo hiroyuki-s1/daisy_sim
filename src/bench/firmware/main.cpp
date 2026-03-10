@@ -2,21 +2,24 @@
  * Bench Firmware - Daisy Seed side
  *
  * Runs on the Daisy Seed in bench test mode (USB connected to PC).
+ * Uses PedalApp + BenchFirmwareHAL for shared application logic.
  * Receives control data (knobs, switches) from PC via USB serial.
  * Sends status data (LEDs, OLED, audio levels) back to PC.
  * DSP processing runs on the Daisy Seed with real audio I/O.
  *
+ * All 12 portable effects available (same as PEDAL_MODE).
  * Build: make (same as other Daisy firmware)
  */
 
 #include "daisy_pod.h"
-#include "daisysp.h"
 
-// Portable effects
-#include "effect_interface.h"
-#include "delay_effect.h"
-#include "overdrive_effect.h"
-#include "chorus_effect.h"
+// HAL + PedalApp
+#include "bench_firmware_hal.h"
+#include "pedal_app.h"
+
+// SDRAM delay line buffers
+#include "delay/delay_effect.h"
+#include "delay/analog_delay_effect.h"
 
 // Bench protocol
 #include "../bench_protocol.h"
@@ -27,21 +30,15 @@ using namespace DaisyFX::Bench;
 
 static DaisyPod hw;
 
-// Effects
-static DelayEffect     fx_delay;
-static OverdriveEffect fx_overdrive;
-static ChorusEffect    fx_chorus;
+// SDRAM-backed delay line buffers (too large for SRAM)
+static daisysp::DelayLine<float, DelayEffect::MAX_DELAY>       DSY_SDRAM_BSS sdram_delay_l;
+static daisysp::DelayLine<float, DelayEffect::MAX_DELAY>       DSY_SDRAM_BSS sdram_delay_r;
+static daisysp::DelayLine<float, AnalogDelayEffect::MAX_DELAY> DSY_SDRAM_BSS sdram_analog_l;
+static daisysp::DelayLine<float, AnalogDelayEffect::MAX_DELAY> DSY_SDRAM_BSS sdram_analog_r;
 
-static EffectBase* effects[] = { &fx_overdrive, &fx_delay, &fx_chorus };
-static constexpr int NUM_EFFECTS = sizeof(effects) / sizeof(effects[0]);
-static int current_effect = 1; // Default: Delay
-
-// Virtual control state (from PC)
-static float v_knobs[4]   = {0.5f, 0.5f, 0.5f, 0.5f};
-static bool  v_switches[4] = {false};
-static int   v_encoder_pos = 0;
-static bool  v_encoder_pressed = false;
-static bool  use_virtual_controls = false; // true when PC is connected
+// HAL and app
+static BenchFirmwareHAL* bench_hal = nullptr;
+static PedalApp          pedal_app;
 
 // Audio levels for reporting
 static float audio_in_level  = 0.0f;
@@ -59,35 +56,10 @@ void AudioCallback(AudioHandle::InterleavingInputBuffer  in,
                    AudioHandle::InterleavingOutputBuffer out,
                    size_t                                size)
 {
-    hw.ProcessAllControls();
-
-    // Use virtual controls from PC if connected, otherwise use hardware
-    float k0, k1;
-    bool bypass_toggle = false;
-
-    if (use_virtual_controls) {
-        k0 = v_knobs[0];
-        k1 = v_knobs[1];
-        bypass_toggle = v_switches[0]; // Direct state, not edge
-    } else {
-        k0 = hw.knob1.Process();
-        k1 = hw.knob2.Process();
-        if (hw.button1.RisingEdge())
-            bypass_toggle = !effects[current_effect]->GetBypass();
-    }
-
-    // Update effect parameters
-    effects[current_effect]->SetParameter(0, k0);
-    effects[current_effect]->SetParameter(1, k1);
-
-    if (!use_virtual_controls && hw.button1.RisingEdge()) {
-        effects[current_effect]->SetBypass(!effects[current_effect]->GetBypass());
-    }
-
-    // LED
-    bool bp = effects[current_effect]->GetBypass();
-    hw.led1.Set(bp ? 1.0f : 0.0f, bp ? 0.0f : 1.0f, 0.0f);
-    hw.UpdateLeds();
+    // Process controls through HAL → PedalApp
+    bench_hal->ProcessControls();
+    pedal_app.UpdateControls();
+    bench_hal->UpdateOutputs();
 
     // De-interleave
     size_t n = size / 2;
@@ -101,8 +73,8 @@ void AudioCallback(AudioHandle::InterleavingInputBuffer  in,
         if (m > peak_in) peak_in = m;
     }
 
-    // Process
-    effects[current_effect]->Process(in_l, in_r, out_l, out_r, n < 48 ? n : 48);
+    // Process audio through PedalApp
+    pedal_app.ProcessAudio(in_l, in_r, out_l, out_r, n < 48 ? n : 48);
 
     // Re-interleave
     for (size_t i = 0; i < n && i < 48; i++) {
@@ -153,38 +125,39 @@ static void ProcessPacket(uint8_t type, const uint8_t* payload, uint16_t len)
             if (len >= sizeof(CtrlAllPayload)) {
                 auto* ctrl = (const CtrlAllPayload*)payload;
                 for (int i = 0; i < 4; i++)
-                    v_knobs[i] = ctrl->knobs[i] / 4095.0f;
-                for (int i = 0; i < 4; i++)
-                    v_switches[i] = (ctrl->switches >> i) & 1;
-                v_encoder_pos = ctrl->encoder_pos;
-                v_encoder_pressed = ctrl->encoder_pressed;
-                use_virtual_controls = true;
+                    bench_hal->SetVirtualKnob(i, ctrl->knobs[i] / 4095.0f);
+                for (int i = 0; i < 2; i++)
+                    bench_hal->SetVirtualButton(i, (ctrl->switches >> i) & 1);
+                bench_hal->SetVirtualEncoderPos(ctrl->encoder_pos);
+                bench_hal->SetVirtualEncoderPressed(ctrl->encoder_pressed);
+                bench_hal->SetUseVirtual(true);
             }
             break;
 
         case PacketType::CMD_EFFECT_SEL:
-            if (len >= 1 && payload[0] < NUM_EFFECTS) {
-                current_effect = payload[0];
+            if (len >= 1 && payload[0] < PedalApp::NUM_EFFECTS) {
+                pedal_app.SetEffectIndex(payload[0]);
             }
             break;
 
         case PacketType::CMD_PARAM_SET:
             if (len >= sizeof(ParamSetPayload)) {
                 auto* p = (const ParamSetPayload*)payload;
-                effects[current_effect]->SetParameter(p->param_index, p->value / 4095.0f);
+                auto* fx = pedal_app.GetCurrentEffect();
+                if (fx && p->param_index < 4)
+                    fx->SetParameter(p->param_index, p->value / 4095.0f);
             }
             break;
 
         case PacketType::CMD_BYPASS:
             if (len >= 1) {
-                effects[current_effect]->SetBypass(payload[0] != 0);
+                pedal_app.SetBypass(payload[0] != 0);
             }
             break;
 
         case PacketType::CMD_RESET:
-            for (int i = 0; i < NUM_EFFECTS; i++)
-                effects[i]->Init(hw.AudioSampleRate());
-            use_virtual_controls = false;
+            pedal_app.Init(bench_hal, hw.AudioSampleRate());
+            bench_hal->SetUseVirtual(false);
             break;
 
         case PacketType::SYS_PING:
@@ -192,7 +165,7 @@ static void ProcessPacket(uint8_t type, const uint8_t* payload, uint16_t len)
             break;
 
         case PacketType::SYS_VERSION: {
-            const char* ver = "BENCH-FW v1.0";
+            const char* ver = "BENCH-FW v2.0";
             SendResponse((uint8_t)ResponseType::SYS_VERSION_RSP, ver, strlen(ver) + 1);
             break;
         }
@@ -205,9 +178,6 @@ static void ProcessPacket(uint8_t type, const uint8_t* payload, uint16_t len)
 
 static void ProcessSerialData()
 {
-    // Read available data from USB CDC
-    // (Daisy USB CDC API - actual API may vary by libDaisy version)
-
     // Parse packets from rx buffer
     for (int i = 0; i < rx_len - 5; i++) {
         if (rx_buf[i] != SYNC0 || rx_buf[i + 1] != SYNC1)
@@ -230,7 +200,7 @@ static void ProcessSerialData()
         i += 5 + plen;
     }
 
-    rx_len = 0; // Reset buffer
+    rx_len = 0;
 }
 
 static uint32_t status_timer = 0;
@@ -243,12 +213,14 @@ static void SendStatusUpdate()
     status_timer = now;
 
     StatusAllPayload status;
-    // LED state
-    bool bp = effects[current_effect]->GetBypass();
-    status.leds[0] = bp ? 255 : 0;
-    status.leds[1] = bp ? 0 : 255;
-    status.leds[2] = 0;
-    status.leds[3] = 0;
+    // LED state from HAL cache
+    float r, g, b;
+    bench_hal->GetLedColor(0, r, g, b);
+    status.leds[0] = (uint8_t)(r * 255.0f);
+    status.leds[1] = (uint8_t)(g * 255.0f);
+    status.leds[2] = (uint8_t)(b * 255.0f);
+    bench_hal->GetLedColor(1, r, g, b);
+    status.leds[3] = (uint8_t)(r * 255.0f);
     status.input_level  = (uint16_t)(audio_in_level * 4095.0f);
     status.output_level = (uint16_t)(audio_out_level * 4095.0f);
 
@@ -264,11 +236,16 @@ int main(void)
     hw.Init();
     hw.SetAudioBlockSize(4);
 
-    float sr = hw.AudioSampleRate();
+    // Create HAL
+    static BenchFirmwareHAL hal_instance(hw);
+    bench_hal = &hal_instance;
 
-    // Initialize all effects
-    for (int i = 0; i < NUM_EFFECTS; i++)
-        effects[i]->Init(sr);
+    // Inject SDRAM delay line buffers
+    pedal_app.GetDelayEffect()->SetDelayLines(&sdram_delay_l, &sdram_delay_r);
+    pedal_app.GetAnalogDelayEffect()->SetDelayLines(&sdram_analog_l, &sdram_analog_r);
+
+    // Initialize PedalApp (all 12 effects)
+    pedal_app.Init(bench_hal, hw.AudioSampleRate());
 
     hw.StartAdc();
     hw.StartAudio(AudioCallback);

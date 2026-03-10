@@ -13,9 +13,11 @@
 #include <string>
 
 #include "sim_hal.h"
+#include "sim_hal_adapter.h"
 #include "audio_engine.h"
 #include "dsp_processor.h"
 #include "daisysp_wrapper.h"
+#include "pedal_app.h"
 
 namespace DaisySim {
 
@@ -60,6 +62,8 @@ private:
 
     // Components
     std::unique_ptr<SimHAL> hal_;
+    std::unique_ptr<SimHalAdapter> hal_adapter_;
+    std::unique_ptr<DaisyFX::PedalApp> pedal_app_;
     std::unique_ptr<AudioEngine> audio_engine_;
     std::unique_ptr<DSPProcessor> dsp_processor_;
     std::unique_ptr<DaisySPEffect> daisysp_effect_;

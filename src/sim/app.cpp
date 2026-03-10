@@ -126,6 +126,11 @@ bool App::Init() {
     daisysp_effect_->Init(48000);
     daisysp_effect_->SetType(EffectType::DELAY);
 
+    // Initialize PedalApp (shared app logic via HAL)
+    hal_adapter_ = std::make_unique<SimHalAdapter>();
+    pedal_app_ = std::make_unique<DaisyFX::PedalApp>();
+    pedal_app_->Init(hal_adapter_.get(), 48000);
+
     // Initialize Audio Engine (256 samples default = safe for most drivers)
     audio_engine_ = std::make_unique<AudioEngine>();
     if (!audio_engine_->Init(48000, 64)) {
@@ -176,8 +181,8 @@ bool App::Init() {
             }
         }
 
-        // Process through selected effect
-        daisysp_effect_->Process(audio_in_l_, audio_in_r_,
+        // Process through selected effect (via PedalApp)
+        pedal_app_->ProcessAudio(audio_in_l_, audio_in_r_,
                                  audio_out_l_, audio_out_r_, n);
 
         // Reinterleave output — mono to both channels + output gain + soft clip
@@ -414,12 +419,22 @@ void App::Update() {
         cached_og_lin_ = (output_gain_ < 0.01f) ? 0.0f : std::pow(10.0f, og_db / 20.0f);
     }
 
-    // Update DaisySP effect parameters from knobs
+    // Update PedalApp via HAL adapter
+    if (hal_adapter_ && pedal_app_) {
+        for (int i = 0; i < 4; i++)
+            hal_adapter_->SetKnobValue(i, knob_values_[i]);
+        hal_adapter_->SetButtonState(0, switch_states_[0]);
+        hal_adapter_->SetButtonState(1, switch_states_[1]);
+        hal_adapter_->SetEncoderPosition(encoder_position_);
+        hal_adapter_->ProcessControls();
+        pedal_app_->UpdateControls();
+
+        // Sync current_effect_type_ for GUI display
+        current_effect_type_ = pedal_app_->GetCurrentEffectIndex();
+    }
+
+    // Keep DaisySP effect in sync (will be removed when PedalApp fully replaces it)
     if (daisysp_effect_) {
-        // knob 0 = Time/Drive/Rate/Time  (param 0)
-        // knob 1 = Fdbk/Damp/Depth/Fdbk (param 1)
-        // knob 2 = Tone/Size/Delay/Tone  (param 2)
-        // knob 3 = Mix                    (wet/dry)
         daisysp_effect_->SetParameter(0, knob_values_[0]);
         daisysp_effect_->SetParameter(1, knob_values_[1]);
         daisysp_effect_->SetParameter(2, knob_values_[2]);
@@ -506,12 +521,15 @@ void App::RenderMainWindow() {
         "Phaser", "Tremolo", "Flanger", "MS 800"
     };
     if (ImGui::Combo("##effect", &current_effect_type_, effect_items, kNumEffects)) {
+        if (pedal_app_) {
+            pedal_app_->SetEffectIndex(current_effect_type_);
+        }
         if (daisysp_effect_) {
             daisysp_effect_->SetType(static_cast<EffectType>(current_effect_type_));
-            char msg[64];
-            snprintf(msg, sizeof(msg), "Effect changed to: %s", effect_items[current_effect_type_]);
-            Log(msg, "INFO");
         }
+        char msg[64];
+        snprintf(msg, sizeof(msg), "Effect changed to: %s", effect_items[current_effect_type_]);
+        Log(msg, "INFO");
     }
     ImGui::Spacing();
 
@@ -673,27 +691,14 @@ void App::RenderOLED() {
         IM_COL32(0, 64, 96, 255)
     );
 
-    // Parameters (dynamic based on effect type)
-    static const char* param_names[kNumEffects][4] = {
-        {"Drive:", "Tone:", "Level:", "Mix:"},    // Overdrive
-        {"Decay:", "Damp:", "Size:", "Mix:"},     // Reverb
-        {"Depth:", "Rate:", "Tone:", "Mix:"},     // Chorus
-        {"Time:", "Fdbk:", "Tone:", "Mix:"},      // Delay
-        {"Sense:", "ATTCK:", "Tone:", "VOL:"},    // Comp
-        {"Gain:", "Tone:", "VOL:", "Mix:"},       // DIST 1
-        {"Time:", "F.B:", "Damp:", "Mix:"},       // AnalogDly
-        {"PreD:", "Decay:", "Damp:", "Mix:"},     // Hall
-        {"Depth:", "Rate:", "RESO:", "Mix:"},     // Phaser
-        {"Wave:", "Depth:", "Rate:", "Mix:"},     // Tremolo
-        {"Depth:", "Rate:", "RESO:", "Mix:"},     // Flanger
-        {"Gain:", "Bass:", "Treble:", "VOL:"},    // MS 800
-    };
-    const char* const* current_params = param_names[current_effect_type_];
+    // Parameters (from PedalApp shared tables)
     for (int i = 0; i < 4; i++) {
         float y = pos.y + (35 + i * 15) * scale / 2;
 
-        // Name
-        draw_list->AddText(ImVec2(pos.x + 10, y), dim_cyan, current_params[i]);
+        // Name (from PedalApp)
+        char param_label[16];
+        snprintf(param_label, sizeof(param_label), "%s:", DaisyFX::PedalApp::GetParamName(current_effect_type_, i));
+        draw_list->AddText(ImVec2(pos.x + 10, y), dim_cyan, param_label);
 
         // Bar background
         float bar_x = pos.x + 70;
@@ -724,22 +729,10 @@ void App::RenderOLED() {
 void App::RenderKnobs() {
     ImGui::Text("Controls");
 
-    // Dynamic knob names based on effect type
-    static const char* knob_names_by_effect[kNumEffects][4] = {
-        {"Drive", "Tone", "Level", "Mix"},    // Overdrive
-        {"Decay", "Damp", "Size", "Mix"},     // Reverb
-        {"Depth", "Rate", "Tone", "Mix"},     // Chorus
-        {"Time", "Fdbk", "Tone", "Mix"},      // Delay
-        {"Sense", "ATTCK", "Tone", "VOL"},    // Comp
-        {"Gain", "Tone", "VOL", "Mix"},       // DIST 1
-        {"Time", "F.B", "Damp", "Mix"},       // AnalogDly
-        {"PreD", "Decay", "Damp", "Mix"},     // Hall
-        {"Depth", "Rate", "RESO", "Mix"},     // Phaser
-        {"Wave", "Depth", "Rate", "Mix"},     // Tremolo
-        {"Depth", "Rate", "RESO", "Mix"},     // Flanger
-        {"Gain", "Bass", "Treble", "VOL"},    // MS 800
-    };
-    const char* const* knob_names = knob_names_by_effect[current_effect_type_];
+    // Dynamic knob names from PedalApp
+    const char* knob_names[4];
+    for (int i = 0; i < 4; i++)
+        knob_names[i] = DaisyFX::PedalApp::GetParamName(current_effect_type_, i);
 
     // 2x2 grid layout with fixed cell size
     const float knob_radius = 50.0f;

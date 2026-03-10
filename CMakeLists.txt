@@ -114,9 +114,18 @@ set(IMGUI_SOURCES
 # ==============================================================================
 set(LIB_EFFECTS_SOURCES
     lib/delay/delay_effect.cpp
+    lib/delay/analog_delay_effect.cpp
     lib/drive/overdrive_effect.cpp
+    lib/drive/dist1_effect.cpp
     lib/modulation/chorus_effect.cpp
+    lib/modulation/tremolo_effect.cpp
+    lib/modulation/flanger_effect.cpp
+    lib/modulation/phaser_effect.cpp
+    lib/dynamics/comp_effect.cpp
+    lib/reverb/reverb_effect.cpp
+    lib/reverb/hall_reverb_effect.cpp
     lib/amp/ms800_amp.cpp
+    lib/pedal_app.cpp
 )
 
 # Common include directories for lib/

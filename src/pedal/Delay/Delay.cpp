@@ -11,13 +11,16 @@
  *   LED 1: Bypass indicator (red=bypass, green=active)
  */
 
-#include "daisysp.h"
 #include "daisy_pod.h"
 
 // Portable effect from lib/
 #include "delay_effect.h"
 
 using namespace daisy;
+
+// Large delay buffers in SDRAM (768KB total, won't fit in 512KB SRAM)
+static daisysp::DelayLine<float, DaisyFX::DelayEffect::MAX_DELAY> DSY_SDRAM_BSS sdram_del_l;
+static daisysp::DelayLine<float, DaisyFX::DelayEffect::MAX_DELAY> DSY_SDRAM_BSS sdram_del_r;
 
 static DaisyPod hw;
 static DaisyFX::DelayEffect delay_fx;
@@ -66,6 +69,7 @@ int main(void)
     hw.Init();
     hw.SetAudioBlockSize(4); // Minimum latency
 
+    delay_fx.SetDelayLines(&sdram_del_l, &sdram_del_r);
     delay_fx.Init(hw.AudioSampleRate());
 
     hw.StartAdc();

@@ -10,13 +10,13 @@ void DelayEffect::Init(float sample_rate)
 {
     sample_rate_ = sample_rate;
 
-    del_l_.Init();
-    del_r_.Init();
+    del_l_->Init();
+    del_r_->Init();
 
     // Default: 500ms delay
     current_delay_ = delay_target_ = sample_rate * 0.5f;
-    del_l_.SetDelay(static_cast<size_t>(current_delay_));
-    del_r_.SetDelay(static_cast<size_t>(current_delay_));
+    del_l_->SetDelay(static_cast<size_t>(current_delay_));
+    del_r_->SetDelay(static_cast<size_t>(current_delay_));
 
     tone_l_.Init(sample_rate);
     tone_r_.Init(sample_rate);
@@ -55,22 +55,22 @@ void DelayEffect::Process(const float* in_l, const float* in_r,
     for (size_t i = 0; i < size; i++) {
         // Smooth delay time to avoid clicks
         daisysp::fonepole(current_delay_, delay_target_, 0.0001f);
-        del_l_.SetDelay(current_delay_);
-        del_r_.SetDelay(current_delay_);
+        del_l_->SetDelay(current_delay_);
+        del_r_->SetDelay(current_delay_);
 
         float dry_l = in_l[i];
         float dry_r = in_r[i];
 
-        float delayed_l = del_l_.Read();
-        float delayed_r = del_r_.Read();
+        float delayed_l = del_l_->Read();
+        float delayed_r = del_r_->Read();
 
         // Apply tone filter to feedback path
         float fb_l = tone_l_.Process(delayed_l) * feedback;
         float fb_r = tone_r_.Process(delayed_r) * feedback;
 
         // Write input + filtered feedback into delay line
-        del_l_.Write(dry_l + fb_l);
-        del_r_.Write(dry_r + fb_r);
+        del_l_->Write(dry_l + fb_l);
+        del_r_->Write(dry_r + fb_r);
 
         // Mix dry and wet
         out_l[i] = dry_l * (1.0f - mix) + delayed_l * mix;

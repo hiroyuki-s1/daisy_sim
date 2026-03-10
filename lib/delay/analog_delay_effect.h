@@ -1,16 +1,14 @@
 /**
- * Delay Effect (Portable)
+ * Analog Delay Effect (Portable)
  *
- * Stereo delay with feedback, tone control, and smooth time changes.
+ * ZOOM AnalogDly 3S: long stereo delay with hi-damp biquad in feedback.
  * Compatible with both Daisy Seed hardware and PC simulator.
  *
  * Parameters:
- *   [0] Time     - Delay time (0.05s - 2.0s)
- *   [1] Feedback - Feedback amount (0 - 90%)
- *   [2] Tone     - Feedback tone (dark to bright)
- *   [3] Mix      - Dry/wet mix
- *
- * Based on DaisyExamples/pod/Delay pattern.
+ *   [0] Time   - Delay time (1-3018ms)
+ *   [1] Feedback - Feedback amount (0-100%)
+ *   [2] HiDamp - High frequency damping (0=dark, 1=bright)
+ *   [3] Mix    - Dry/wet mix
  */
 
 #pragma once
@@ -20,12 +18,12 @@
 
 namespace DaisyFX {
 
-class DelayEffect : public EffectBase {
+class AnalogDelayEffect : public EffectBase {
 public:
-    static constexpr size_t MAX_DELAY = 96000; // 2.0s @ 48kHz
+    static constexpr size_t MAX_DELAY = 148000; // ~3.08s @ 48kHz
 
-    DelayEffect() = default;
-    ~DelayEffect() override = default;
+    AnalogDelayEffect() = default;
+    ~AnalogDelayEffect() override = default;
 
     void Init(float sample_rate) override;
 
@@ -33,10 +31,10 @@ public:
                  float* out_l, float* out_r,
                  size_t size) override;
 
-    const char* GetName() const override { return "Delay"; }
+    const char* GetName() const override { return "AnalogDly"; }
 
     const char* GetParameterName(int index) const override {
-        static const char* names[] = {"Time", "Feedback", "Tone", "Mix"};
+        static const char* names[] = {"Time", "Feedback", "HiDamp", "Mix"};
         return (index >= 0 && index < 4) ? names[index] : "---";
     }
 
@@ -65,8 +63,8 @@ private:
     float current_delay_ = 24000.0f;
     float delay_target_  = 24000.0f;
 
-    OnePole tone_l_;
-    OnePole tone_r_;
+    Biquad damp_l_;
+    Biquad damp_r_;
 };
 
 } // namespace DaisyFX

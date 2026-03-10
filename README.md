@@ -62,28 +62,40 @@ daisy_sim/
 ├── lib/                    # ★ ポータブルエフェクト (PC・ARM共通)
 │   ├── effect_interface.h  #   エフェクト基底クラス
 │   ├── dsp_blocks.h        #   DSPプリミティブ (Biquad, DelayLine等)
-│   ├── platform.h          #   プラットフォーム抽象化
+│   ├── hal.h               #   HALインターフェース (全モード共通)
+│   ├── pedal_app.h/cpp     #   共通アプリロジック (12エフェクト管理)
+│   ├── platform.h          #   プラットフォーム抽象化 (旧)
 │   ├── amp/                #   アンプ系
-│   │   ├── ms800_amp.h/cpp #     Marshall JCM800モデル
+│   │   └── ms800_amp.h/cpp #     Marshall JCM800モデル
 │   ├── delay/              #   ディレイ系
-│   │   └── delay_effect.h/cpp
+│   │   ├── delay_effect.h/cpp      #  ステレオディレイ (2.0s)
+│   │   └── analog_delay_effect.h/cpp #  アナログディレイ (3.0s)
 │   ├── drive/              #   歪み系
-│   │   └── overdrive_effect.h/cpp
+│   │   ├── overdrive_effect.h/cpp
+│   │   └── dist1_effect.h/cpp      #  BOSS DS-1モデル
 │   ├── modulation/         #   モジュレーション系
-│   │   └── chorus_effect.h/cpp
-│   ├── dynamics/           #   ダイナミクス (将来追加)
-│   └── reverb/             #   リバーブ (将来追加)
+│   │   ├── chorus_effect.h/cpp
+│   │   ├── tremolo_effect.h/cpp
+│   │   ├── flanger_effect.h/cpp
+│   │   └── phaser_effect.h/cpp
+│   ├── dynamics/           #   ダイナミクス
+│   │   └── comp_effect.h/cpp       #  MXR Dyna Compモデル
+│   └── reverb/             #   リバーブ
+│       ├── reverb_effect.h/cpp     #  Freeverbモデル
+│       └── hall_reverb_effect.h/cpp #  FDNリバーブ
 │
 ├── src/
 │   ├── sim/                # SIM_MODE (PCシミュレータ)
 │   │   ├── main.cpp, app.cpp/h
-│   │   ├── daisysp_wrapper.h  # 12種エフェクト実装
+│   │   ├── sim_hal_adapter.h  # SimHalAdapter (HAL実装)
+│   │   ├── daisysp_wrapper.h  # 12種エフェクト実装 (レガシー)
 │   │   ├── audio/          #   PortAudio (ASIO/WASAPI)
 │   │   ├── gui/            #   ImGuiウィジェット
 │   │   ├── hal/            #   SimHAL (HWエミュレーション)
 │   │   └── external/imgui/ #   Dear ImGui
 │   │
 │   ├── pedal/              # PEDAL_MODE (DaisyExamplesパターン)
+│   │   ├── pedal_hal.h     #   PedalHAL (DaisyPodラッパー)
 │   │   └── Delay/
 │   │       ├── Delay.cpp   #   lib/delay/ を使用
 │   │       └── Makefile    #   libDaisy Makefileシステム
@@ -92,7 +104,8 @@ daisy_sim/
 │       ├── bench_protocol.h #  バイナリプロトコル定義
 │       ├── bench_host.h/cpp #  PC側ホスト
 │       └── firmware/       #   Daisy側ベンチFW
-│           ├── main.cpp
+│           ├── main.cpp    #   PedalApp + 全12エフェクト
+│           ├── bench_firmware_hal.h # BenchFirmwareHAL
 │           └── Makefile
 │
 ├── tests/                  # テスト (CMake)
@@ -197,6 +210,70 @@ class EffectBase {
 
 ## アーキテクチャ
 
+### HAL + PedalApp (共通設計)
+
+全3モードが同じ `PedalApp` を使い、HAL実装だけが異なります。
+
+```mermaid
+classDiagram
+    class HAL {
+        <<interface>>
+        +ProcessControls()
+        +UpdateOutputs()
+        +GetKnobValue(id) float
+        +GetButtonRisingEdge(id) bool
+        +GetEncoderIncrement() int
+        +SetLedColor(id, r, g, b)
+        +OledPrint(x, y, text)
+        +OledUpdate()
+    }
+
+    class PedalApp {
+        -effects_[12] : EffectBase*
+        -current_effect_ : int
+        -bypass_ : bool
+        +Init(hal, sample_rate)
+        +UpdateControls()
+        +ProcessAudio(in_l, in_r, out_l, out_r, size)
+        +SetEffectIndex(index)
+        +GetDelayEffect()
+        +GetAnalogDelayEffect()
+    }
+
+    class SimHalAdapter {
+        GUI→knob/button/encoder
+        LED/OLED→GUIに表示
+    }
+    class PedalHAL {
+        DaisyPodハードウェア直接制御
+    }
+    class BenchFirmwareHAL {
+        USB Serial仮想コントロール
+        ハードウェアフォールバック
+    }
+
+    HAL <|-- SimHalAdapter : SIM_MODE
+    HAL <|-- PedalHAL : PEDAL_MODE
+    HAL <|-- BenchFirmwareHAL : BENCH_MODE
+    PedalApp --> HAL : uses
+    PedalApp --> EffectBase : owns 12 effects
+```
+
+### SDRAM管理 (ARM)
+
+Daisy Seed は SRAM 512KB しかないため、大容量ディレイバッファは SDRAM (64MB) に配置。
+
+```cpp
+// firmware main.cpp での使用例
+static daisysp::DelayLine<float, 96000>  DSY_SDRAM_BSS sdram_del_l;  // SDRAM上
+static daisysp::DelayLine<float, 96000>  DSY_SDRAM_BSS sdram_del_r;
+
+pedal_app.GetDelayEffect()->SetDelayLines(&sdram_del_l, &sdram_del_r);
+pedal_app.Init(hal, sample_rate);
+```
+
+PC (`SIM_MODE`) ではクラス内部にストレージを持つため `SetDelayLines()` 不要。
+
 ### 信号フロー (SIM_MODE)
 
 ```mermaid
@@ -209,7 +286,7 @@ flowchart LR
         direction TB
         C1["ステレオ→モノ変換"] --> C2["入力ゲイン適用"]
         C2 --> C3["テストトーン加算"]
-        C3 --> C4["DaisySPEffect::Process()"]
+        C3 --> C4["PedalApp::ProcessAudio()"]
         C4 --> C5["出力ゲイン適用"]
         C5 --> C6["tanh ソフトクリップ"]
         C6 --> C7["モノ→ステレオ出力"]
@@ -240,7 +317,9 @@ sequenceDiagram
 [SYNC0: 0xDA] [SYNC1: 0x15] [TYPE: 1B] [LEN: 2B LE] [PAYLOAD: 0-1040B] [CRC8: 1B]
 ```
 
-### コンポーネント関係
+### ポータブルエフェクト一覧 (lib/)
+
+全12エフェクトが PC (SIM_MODE/BENCH_MODE) と Daisy Seed (PEDAL_MODE) の両方でコンパイル・実行可能。
 
 ```mermaid
 classDiagram
@@ -252,43 +331,19 @@ classDiagram
         +GetName() string
     }
 
-    class DelayEffect {
-        -DelayLine delay_l_, delay_r_
-        -OnePole tone_
-    }
-
-    class MS800Amp {
-        -Biquad pre_eq_, cathode_
-        -Biquad tone_stack_[3]
-        -float gain_, volume_
-    }
-
-    class OverdriveEffect {
-        -OnePole tone_
-        -float drive_
-    }
-
-    class ChorusEffect {
-        -DelayLine delay_l_, delay_r_
-        -float lfo_phase_
-    }
-
-    class DaisySPEffect {
-        -EffectType type_
-        -float params_[8]
-        +SetType(type)
-        +12種の内蔵エフェクト
-    }
-
-    EffectBase <|-- DelayEffect
-    EffectBase <|-- MS800Amp
     EffectBase <|-- OverdriveEffect
+    EffectBase <|-- ReverbEffect
     EffectBase <|-- ChorusEffect
+    EffectBase <|-- DelayEffect
+    EffectBase <|-- CompEffect
+    EffectBase <|-- Dist1Effect
+    EffectBase <|-- AnalogDelayEffect
+    EffectBase <|-- HallReverbEffect
+    EffectBase <|-- PhaserEffect
+    EffectBase <|-- TremoloEffect
+    EffectBase <|-- FlangerEffect
+    EffectBase <|-- MS800Amp
 
-    DaisySPEffect --> EffectBase : uses lib/ effects
-    DaisySPEffect --> "SIM専用エフェクト" : Comp, DIST1, etc.
-
-    note for DaisySPEffect "src/sim/daisysp_wrapper.h\nSIM_MODE専用モノリシック実装"
     note for EffectBase "lib/effect_interface.h\nPC・ARM両対応"
 ```
 
@@ -398,33 +453,104 @@ cd src/pedal/MyEffect && make && make program-dfu
 
 ---
 
-## Windowsセットアップ
+## Windowsフルセットアップ
 
-### 1. ツールチェーン
+全3モード（SIM / BENCH / PEDAL）を使えるようにする手順。
+
+### 1. MSYS2 + PC向けツールチェーン
 
 ```bash
-# MSYS2 UCRT64ターミナルで
+# MSYS2インストール: https://www.msys2.org/
+# MSYS2 UCRT64ターミナルで:
 pacman -S mingw-w64-ucrt-x86_64-{gcc,cmake,ninja,SDL2,portaudio,pkgconf}
+pacman -S make  # PEDAL/BENCH firmware ビルドに必要
 ```
 
-### 2. DaisyExamples (DaisySP統合用)
+**重要**: Git Bash や VS Code ターミナルでは以下の PATH 設定が必要:
+```bash
+export PATH="/c/msys64/ucrt64/bin:/c/msys64/usr/bin:$PATH"
+```
+
+### 2. ARM ツールチェーン (PEDAL_MODE / BENCH firmware)
+
+Daisy Seed ファームウェアのビルドに必要。SIM_MODE のみ使う場合は不要。
+
+1. [Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) から `arm-none-eabi` (12.2以上) をダウンロード・インストール
+2. PATH に追加:
+   ```bash
+   export PATH="/c/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/12.2 mpacbti-rel1/bin:$PATH"
+   ```
+3. 確認:
+   ```bash
+   arm-none-eabi-gcc --version  # arm-none-eabi-gcc 12.2.1 以上
+   ```
+
+### 3. DaisyExamples + libDaisy + DaisySP
 
 ```bash
+# DaisyExamples リポジトリ
 git clone https://github.com/electro-smith/DaisyExamples ~/ws/DaisyExamples
-cd ~/ws/DaisyExamples && git submodule update --init DaisySP
+cd ~/ws/DaisyExamples
+
+# libDaisy と DaisySP のサブモジュール初期化
+git submodule update --init libDaisy DaisySP
+
+# libDaisy ビルド (ARM ファームウェアのリンクに必要)
+cd libDaisy && make
+cd ..
+
+# DaisySP ビルド (ARM ファームウェアのリンクに必要)
+cd DaisySP && make
 ```
 
-### 3. ローカル設定
+### 4. ローカル設定
 
 `cmake/local.cmake` を作成 (`.gitignore`対象):
 ```cmake
 set(DAISY_EXAMPLES_PATH "C:/Users/<ユーザー名>/ws/DaisyExamples" CACHE PATH "" FORCE)
 set(USE_DAISYSP ON CACHE BOOL "" FORCE)
-# ASIO対応PortAudio (省略可)
+# ASIO対応PortAudio (省略可 — 超低レイテンシが必要な場合)
 if(WIN32)
     set(CUSTOM_PORTAUDIO_PATH "C:/Users/<ユーザー名>/ws/portaudio" CACHE PATH "" FORCE)
 endif()
 ```
+
+### 5. 全モードビルド確認
+
+```bash
+export PATH="/c/msys64/ucrt64/bin:/c/msys64/usr/bin:$PATH"
+export PATH="/c/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/12.2 mpacbti-rel1/bin:$PATH"
+
+# SIM_MODE (PCシミュレータ)
+cmake -B build_root -DDAISY_TARGET=SITL -G Ninja
+ninja -C build_root
+./build_root/DaisySim.exe
+
+# テスト
+cd tests && cmake -B build -G Ninja && ninja -C build
+./build/test_ms800.exe && ./build/test_ui_arrays.exe
+cd ..
+
+# PEDAL_MODE ファームウェア (Delay)
+cd src/pedal/Delay && make
+# make program-dfu  # DFUモードでDaisyに書き込み
+cd ../../..
+
+# BENCH firmware (全12エフェクト)
+cd src/bench/firmware && make
+# make program-dfu  # DFUモードでDaisyに書き込み
+cd ../../..
+```
+
+### トラブルシューティング
+
+| 症状 | 原因 | 対処 |
+|------|------|------|
+| `mkdir -p: コマンドの構文が誤っています` | Windows版makeがMSYS2のmakeでない | `pacman -S make` で MSYS2版をインストール、`/c/msys64/usr/bin` を PATH に |
+| `-ldaisy: No such file` | libDaisy 未ビルド | `cd DaisyExamples/libDaisy && make` |
+| `-ldaisysp: No such file` | DaisySP 未ビルド | `cd DaisyExamples/DaisySP && make` |
+| SRAM overflow (>512KB) | DelayLine がクラス内に直接配置 | `SetDelayLines()` で SDRAM バッファを注入 |
+| `fonepole` / `DelayLine` 再定義 | `daisysp.h` と `dsp_blocks.h` の同時include | ファームウェアでは `daisysp.h` を直接includeしない |
 
 ---
 
