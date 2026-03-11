@@ -294,47 +294,74 @@ class TapeDelay {
 
 ### 6.3 Roland RE-201 Space Echo タップ配置
 
-RE-201は3ヘッド構成 (Playback Head 1/2/3) × 12モード:
+RE-201は3ヘッド構成 (Playback Head 1/2/3) × 11モード + Spring Reverb:
 
 ```
-テープ速度: 7.5 ips (19.05 cm/s)
-ヘッド間距離:
-  Rec Head → PB Head 1:  1.4" = 35.6mm → 187ms
-  Rec Head → PB Head 2:  2.1" = 53.3mm → 280ms
-  Rec Head → PB Head 3:  3.5" = 88.9mm → 467ms
+テープ速度: 7.5 ips = 19.05 cm/s (高速) / 3.75 ips = 9.525 cm/s (低速)
 
-モード11: H1+H2+H3 = 187ms, 280ms, 467ms (和音的エコー)
-モード1:  H1のみ   = 187ms (スラップバック)
-モード9:  H2+H3   = 280ms, 467ms (拍系エコー)
+物理ヘッド間距離と遅延:
+  Rec Head → PB Head 1:  ≈10.5mm → 55ms  (7.5ips) / 110ms (3.75ips)
+  Rec Head → PB Head 2:  ≈21mm   → 110ms (7.5ips) / 220ms (3.75ips)
+  Rec Head → PB Head 3:  ≈31.5mm → 165ms (7.5ips) / 330ms (3.75ips)
+
+スプリングリバーブタンク: Accutronics 8EB2C1B (3スプリング)
 ```
+
+**モード一覧** (7.5ips):
+
+| モード | タップ | 遅延(ms) | 用途 |
+|--------|--------|----------|------|
+| 1 | H1 | 55 | スラップバック |
+| 2 | H2 | 110 | 4分音符エコー (BPM=136時) |
+| 3 | H3 | 165 | 付点8分 (BPM=136時) |
+| 4 | H1+H2 | 55, 110 | ダブルエコー |
+| 9 | H2+H3 | 110, 165 | 付点系エコー |
+| 11 | H1+H2+H3 | 55, 110, 165 | 和音的エコー |
+| 12 | Reverb only | — | スプリングリバーブ |
 
 ```cpp
-// RE-201 モード11 エミュレーション
-float RE201Mode11(float in) {
-    float h1 = Read(ms_to_samples(187.0f));
-    float h2 = Read(ms_to_samples(280.0f));
-    float h3 = Read(ms_to_samples(467.0f));
+// RE-201 モード9 (7.5ips) エミュレーション
+float RE201Mode9(float in) {
+    float h2 = Read(ms_to_samples(110.0f));
+    float h3 = Read(ms_to_samples(165.0f));
 
-    float fb = (h1 * 0.5f + h2 * 0.3f + h3 * 0.2f) * feedback_;
+    float fb = (h2 * 0.6f + h3 * 0.4f) * feedback_;
     Write(in + TapeFilter(fb));
 
-    return in + (h1 + h2 + h3) * mix_ / 3.0f;
+    return in + (h2 + h3) * mix_ * 0.5f;
+}
+
+// 3.75ips (低速) では遅延が2倍: 220ms, 330ms
+float RE201Mode9_LowSpeed(float in) {
+    float h2 = Read(ms_to_samples(220.0f));
+    float h3 = Read(ms_to_samples(330.0f));
+    float fb = (h2 * 0.6f + h3 * 0.4f) * feedback_;
+    Write(in + TapeFilter(fb));
+    return in + (h2 + h3) * mix_ * 0.5f;
 }
 ```
 
 ### 6.4 Binson Echorec ディスクディレイ
 
-ディスク回転式（磁気ドラム）:
+ディスク回転式（磁気ドラム）— Pink Floyd "Echoes" で有名:
 
 ```
-磁気ドラム直径: ~100mm、回転速度: 可変 (~60-80rpm)
-円周上に4つの再生ヘッド → 異なる遅延タップ
-遅延範囲: 55〜640ms（回転速度による）
+磁気スチールディスク回転速度: 78 RPM → 1回転 = 0.769秒
+円周上に4つの再生ヘッド（角度位置で遅延が決まる）
+
+Echorec 2 T7E の4タップ:
+  Head 1: ≈80ms   (スラップバック)
+  Head 2: ≈165ms  (8分音符 @ ~90BPM)
+  Head 3: ≈250ms  (4分音符 @ ~60BPM)
+  Head 4: ≈320ms  (付点4分 @ ~62BPM)
 ```
 
 ディスクならではの特性:
-- ワウ・フラッターがテープより小さい（剛体回転）
-- ヘッドブラッシング: 周期的なレベル変動（ドラム1回転で完全消去）
+- ワウ・フラッターがテープより規則的（剛体回転）
+- モーターコギングによるわずかな周期的速度変動
+- 磁性材料が低保磁力合金 → 軟らかい磁気特性 → 独特の偶数次高調波
+- バイアス発振器なし → テープより高調波歪みが多め（"Binsonの音"の源）
+- 1回転ごとに磁気記録が上書き → 最大遅延は1回転時間 (769ms)
 
 ---
 
@@ -491,7 +518,54 @@ public:
 };
 ```
 
-**Extended Karplus-Strong** (Jaffe & Smith 1983): ストレッチ係数で非倍音倍音を制御、リアルな弦音へ。
+### 8.2 プラック位置モデル（胴体の音色再現）
+
+弦の弾く位置（プラック位置）が倍音構成を決める:
+
+```
+p = 弾く位置 (0=ナット, 1=ブリッジ, 0.5=12フレット付近)
+
+各倍音 k の初期振幅:
+  A(k) = sin(k × π × p)   (位置での腹の大きさ)
+
+p = 0.5 (12フレット位置): 偶数次倍音がキャンセル → 空洞な音
+p = 0.1 (ブリッジ近く):   全倍音が強い → 明るい音
+```
+
+```cpp
+// プラック位置を考慮したバッファ初期化
+void PluckWithPosition(float freq, float sample_rate, float position) {
+    delay_len_ = (int)(sample_rate / freq);
+    for (int i = 0; i < delay_len_; i++) {
+        float noise = (rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+        // 各倍音にプラック位置ウィンドウを適用
+        float window = 0.0f;
+        for (int k = 1; k <= 16; k++) {
+            float phase = 2.0f * M_PI * k * i / delay_len_;
+            window += sinf(k * M_PI * position) * sinf(phase);
+        }
+        buf_[i] = noise * window / 16.0f;
+    }
+}
+```
+
+**Extended Karplus-Strong** (Jaffe & Smith 1983):
+
+ループフィルターを汎用一次 LPF に置き換えてギター/ベース/バンジョーの音色差を再現:
+
+```cpp
+// 一次LPFループフィルター (fc=ブライトネス制御)
+float LoopFilter(float in, float fc, float& state) {
+    float k = tanf(M_PI * fc / sample_rate_);
+    float b0 = k / (1.0f + k);
+    float b1 = b0;
+    float a1 = -(1.0f - k) / (1.0f + k);
+    float out = b0 * in + b1 * prev_in_ - a1 * state;
+    state = out;
+    return out;
+}
+// fc ≈ 7kHz → ギター、fc ≈ 3kHz → ベース、fc ≈ 10kHz → バンジョー
+```
 
 **チューニング**: ディレイ長 `N = fs/f0` は整数なので、端数部分は Thiran APF で補間。
 
@@ -544,7 +618,69 @@ class PartitionedConvolver {
 
 ---
 
-## 10. リバースディレイ（逆再生エコー）
+## 10. シマーリバーブ（ピッチシフター in フィードバック）
+
+フィードバックループ内にピッチシフターを入れたリバーブ。E-Bow や弦楽器のような「上昇する残響」を生成。
+
+### アーキテクチャ
+
+```
+入力
+  ↓
+[プリディレイ]
+  ↓
+[FDNリバーブ] ─→ 出力
+  ↑         |
+  |    [ピッチシフター: +1oct or +P5 (×1.5)]
+  └─── × feedback ←┘
+```
+
+フィードバックを重ねるたびに `f → 2f → 4f → 8f...` と上昇 → 無限の「輝き」感。
+
+### グラニュラーピッチシフター実装（低レイテンシ）
+
+```cpp
+class GranularPitchShifter {
+    static const int GRAIN_SAMPLES = 2048;  // 約42ms @ 48kHz
+    float buf_[GRAIN_SAMPLES * 2] = {};
+    int   write_pos_ = 0;
+    float read_pos_a_, read_pos_b_;     // 2グレイン
+    float pitch_ratio_ = 2.0f;          // 1オクターブ上 (1.5=完全5度)
+
+    // Hann ウィンドウ
+    float Hann(int pos) {
+        float x = M_PI * pos / GRAIN_SAMPLES;
+        return 0.5f * (1.0f - cosf(2.0f * x));
+    }
+
+    float Process(float in) {
+        buf_[write_pos_ % (GRAIN_SAMPLES * 2)] = in;
+        write_pos_++;
+
+        // 2グレインを180°オフセットでクロスフェード
+        int pos_a = (int)read_pos_a_ % GRAIN_SAMPLES;
+        int pos_b = (int)read_pos_b_ % GRAIN_SAMPLES;
+
+        float env_a = Hann(pos_a);
+        float env_b = Hann(pos_b);
+
+        float out_a = buf_[((write_pos_ - GRAIN_SAMPLES + pos_a) + GRAIN_SAMPLES*2) % (GRAIN_SAMPLES*2)] * env_a;
+        float out_b = buf_[((write_pos_ - GRAIN_SAMPLES + pos_b) + GRAIN_SAMPLES*2) % (GRAIN_SAMPLES*2)] * env_b;
+
+        // 読み取り速度 = pitch_ratio_ (>1で高音)
+        read_pos_a_ += pitch_ratio_;
+        read_pos_b_ += pitch_ratio_;
+        if ((int)read_pos_a_ >= GRAIN_SAMPLES) read_pos_a_ -= GRAIN_SAMPLES;
+        if ((int)read_pos_b_ >= GRAIN_SAMPLES) read_pos_b_ -= GRAIN_SAMPLES;
+
+        return out_a + out_b;
+    }
+};
+```
+
+---
+
+## 11. リバースディレイ（逆再生エコー）
 
 リアルタイム逆再生の実装方針:
 
@@ -586,7 +722,7 @@ class ReverseDelay {
 
 ---
 
-## 11. パラメータ設計ガイド
+## 12. パラメータ設計ガイド
 
 | パラメータ | 典型範囲 | 音楽的効果 |
 |----------|---------|----------|
@@ -616,7 +752,7 @@ RE-201 Space Echo: delay=187ms+280ms+467ms, tape mode
 
 ---
 
-## 12. よくある問題と対策
+## 13. よくある問題と対策
 
 | 問題 | 原因 | 対策 |
 |------|------|------|
@@ -629,7 +765,7 @@ RE-201 Space Echo: delay=187ms+280ms+467ms, tape mode
 
 ---
 
-## 13. 参考文献
+## 14. 参考文献
 
 - Karplus, K. & Strong, A. (1983). "Digital Synthesis of Plucked-String and Drum Timbres." *Computer Music Journal* 7(2), 43-55.
 - Laakso, T.I. et al. (1996). "Splitting the Unit Delay." *IEEE Signal Processing Magazine* 13(1), 30-60.
