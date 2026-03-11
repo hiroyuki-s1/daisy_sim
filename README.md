@@ -306,12 +306,25 @@ sequenceDiagram
 
     PC->>Daisy: CMD_EFFECT_SEL (エフェクト切替)
     PC->>Daisy: CMD_PARAM_SET (パラメータ設定)
+
+    loop 1秒ごと
+        PC->>Daisy: SYS_HEALTH (0x32) — ヘルスビート
+        Note over Daisy: LED2 緑点灯 (1s timeout)
+    end
+
+    loop 定期
+        Daisy->>PC: SYS_LOG (0xBF) — デバッグ文字列
+        Note over PC: コンソールに [DAISY] ログ表示
+    end
 ```
 
 **フレームフォーマット:**
 ```
 [SYNC0: 0xDA] [SYNC1: 0x15] [TYPE: 1B] [LEN: 2B LE] [PAYLOAD: 0-1040B] [CRC8: 1B]
 ```
+
+> **重要**: `DaisySeed::Init()` は USB CDCを初期化しない（コメントアウトされている）。
+> ファームウェアで明示的に `hw.seed.usb_handle.Init(UsbHandle::FS_INTERNAL)` を呼ぶこと。
 
 ### ポータブルエフェクト一覧 (lib/)
 
