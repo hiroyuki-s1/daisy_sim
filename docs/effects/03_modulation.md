@@ -1,42 +1,73 @@
 # モジュレーション系エフェクター設計教科書
 ## Chorus / Flanger / Phaser / Tremolo / Vibrato
 
+> **参考文献**: Laakso et al. (IEEE SPM 1996), Thiran (1971), MXR Phase 90 回路解析 (ElectroSmash), Doidic et al. スルーゼロフランジング特許 (1997), Roland JC-120 回路解析
+
 ---
 
-## 1. モジュレーション効果の原理
+## 1. BBD（Bucket Brigade Device）チップの内部構造
 
-LFO（低周波発振器）でパラメータを時間変動させることで、音に動き・広がり・うねりを与える。
+### 電荷転送メカニズム
+
+BBD は離散時間・連続振幅（DTCA）アナログ遅延ライン。
+2つの非重複相補クロック（CLK1, CLK2）が交互にステージを駆動する。
+1クロックサイクルで信号が2ステージ進む：
 
 ```
-LFO（低周波発振器）
-  │
-  └→ パラメータを変調
-        ├── ディレイ時間  → コーラス / フランジャー / ビブラート
-        ├── フィルターカットオフ → フェイザー
-        └── 振幅         → トレモロ
+T_delay = N / (2 × f_clk)
+
+MN3007 (N=1024 ステージ):
+  f_clk = 100 kHz → T = 5.12 ms（最小遅延）
+  f_clk =  10 kHz → T = 51.2 ms（最大遅延）
 ```
 
-### LFO波形の特性
+### 主要 BBD チップ比較
 
-| 波形 | 特性 | 向き |
-|------|------|------|
-| サイン波 | 滑らか、自然なうねり | コーラス、フランジャー |
-| 三角波 | 線形変化、少し機械的 | フェイザー |
-| 矩形波 | オン/オフ切替 | トレモロ（スクエア感） |
-| ランダム (S&H) | 予測不能、独特 | オートワウ風 |
+| パラメータ | MN3007 | MN3208 | SAD1024A |
+|-----------|--------|--------|----------|
+| テクノロジー | PMOS | NMOS | NMOS |
+| ステージ数 | 1024 | 1024 | 512+512 |
+| クロック範囲 | 10–100 kHz | 10–100 kHz | 1.5–15 kHz |
+| 最小遅延 | 5.12 ms | 5.12 ms | 17 ms |
+| 最大遅延 | 51.2 ms | 51.2 ms | 170 ms |
+| 電源電圧 | −12V | +5〜+10V | +5〜+15V |
+| SNR | 80 dB | 73 dB | ~70 dB |
+| THD | 0.5% | 1% | <1% |
 
-```cpp
-// LFO実装
-class LFO {
-    float phase_ = 0.0f;
-public:
-    float Process(float rate_hz, float sample_rate) {
-        phase_ += 2.0f * M_PI * rate_hz / sample_rate;
-        if (phase_ >= 2.0f * M_PI) phase_ -= 2.0f * M_PI;
-        return sinf(phase_);  // -1〜+1
-    }
-};
+**MN3007 の出力段構造**: 最後の2つのストレージキャパシタから差動ソースフォロワーで取り出し → 偶数次高調波とクロックフィードスルーを打ち消す。
+
+### コンパンダー回路
+
+BBD のノイズを改善するため圧縮・伸張を行う：
+
 ```
+信号入力
+  ↓
+[VCA コンプレッサー (2:1 圧縮)]
+  ↓
+[アンチエイリアシング LPF]
+  ↓
+[BBD]
+  ↓
+[再構成 LPF]
+  ↓
+[VCA エキスパンダー (1:2 伸張)]
+  ↓
+出力
+```
+
+MN3101/MN3102: 専用コンパンダー IC（MN3007 と同シリーズ）。
+コンパンダーで約 20 dB の SNR 改善 → MN3007 base 80 dB + コンパンダー = 90〜95 dB A-weighted。
+
+**Boss CE-2 のアプローチ（プリ/ディエンファシス）**:
+- BBD 入力前: 2.3 kHz で +15 dB ブースト
+- BBD 出力後: 410 Hz 以上で −15 dB カット
+- 真のコンパンダーより実装が簡単
+
+**Boss CE-2 のアンチエイリアシングフィルタ（実測値）**:
+- BBD 前: 受動 HP (48 Hz) + Sallen-Key 3次 LP (6.6 kHz, 6.9 kHz)
+- BBD 後: 受動 HP (14.6 Hz) + 同じ Sallen-Key 構成
+- クロック: MN3101 + R=150kΩ, C=47pF
 
 ---
 
@@ -44,331 +75,346 @@ public:
 
 ### 原理
 
-ドライ信号に「わずかにピッチが変動したコピー」を重ねることで、複数の演奏者が同時に演奏しているような効果を作る。
+ドライ信号に LFO 変調した可変ディレイのコピーを重ねる：
 
 ```
-ドライ ──────────────────────────────────────── ×(1-mix) ─→ 加算 → 出力
-         └→ [可変ディレイ 15〜35ms + LFO変調] → ×mix ─────────┘
+y[n] = dry × x[n] + wet × x[n − d(n)]
+d(n) = D_base + A × sin(2π × f_LFO × n / fs)
 ```
 
 ### 設計パラメータ
 
 | パラメータ | 典型値 | 効果 |
 |----------|--------|------|
-| ディレイ時間 (base) | 15〜35ms | 短いと薄い、長いと分離感 |
-| LFO レート | 0.1〜5Hz | 遅い=ゆっくりうねる、速い=ビブラート |
-| LFO 深さ (depth) | ±5〜15ms | 大=ピッチ変化が大きい |
-| Mix (Wet/Dry) | 40〜60% | |
+| ベースディレイ D_base | 15〜35 ms | 短い=薄い、長い=分離感 |
+| LFO レート | 0.1〜5 Hz | 遅い=うねり、速い=ビブラート |
+| LFO 深さ A | ±5〜15 ms | 大=ピッチ変化大 |
+| Mix | 40〜60% | |
 | ボイス数 | 1〜4 | 多いほど豊か |
 
-### DSP実装
+### Roland JC-120 コーラス回路
 
-```cpp
-class ChorusEffect {
-    float delay_buf_[4096] = {};
-    int   write_pos_ = 0;
-    LFO   lfo_;
-    float sample_rate_;
+デュアル MN3002（256ステージ）BBD を並列使用、同じ LFO を逆位相（90° または 180° オフセット）で各 BBD に供給、L/R チャンネルへルーティング。
 
-    float ReadInterpolated(float delay_samples) {
-        float frac = delay_samples - floorf(delay_samples);
-        int i0 = (write_pos_ - (int)delay_samples + 4096) % 4096;
-        int i1 = (i0 - 1 + 4096) % 4096;
-        return delay_buf_[i0] * (1.0f - frac) + delay_buf_[i1] * frac;
-    }
-
-public:
-    float Process(float in, float rate, float depth, float base_delay_ms) {
-        delay_buf_[write_pos_] = in;
-        write_pos_ = (write_pos_ + 1) % 4096;
-
-        float lfo_val = lfo_.Process(rate, sample_rate_);
-        float delay_samples = (base_delay_ms + depth * lfo_val) * sample_rate_ / 1000.0f;
-
-        float wet = ReadInterpolated(delay_samples);
-        return in * 0.5f + wet * 0.5f;
-    }
-};
+```
+LFO ─┬→ BBD1 (0°)   → 左チャンネル
+      └→ BBD2 (90°)  → 右チャンネル
 ```
 
-### 多ボイスコーラス
+ディレイ範囲: 各 BBD 1〜8 ms。
 
-複数のLFOを位相差でずらして重ねる：
+### 深さと音のキャラクター
+
+| 変調深さ | 音の性格 |
+|---------|---------|
+| <0.5 ms | 微細な音の厚み |
+| 1〜5 ms | デチューン/コーラス |
+| 10〜30 ms | ビブラート + フランジングアーティファクト |
+
+### コーラス vs ビブラート DSP
 
 ```cpp
-// 3ボイスの例: LFO位相を 0°, 120°, 240° にずらす
-float lfo1 = sinf(phase);
-float lfo2 = sinf(phase + 2.0f * M_PI / 3.0f);
-float lfo3 = sinf(phase + 4.0f * M_PI / 3.0f);
+// ビブラート: ドライなし、純粋なピッチ変調（Doppler効果）
+float vibrato(float x[], float* buf, float phase, float depth, float fs) {
+    float d = D_base + depth * sinf(phase);
+    return ReadThiran(buf, d);   // wet 100%
+}
 
-float voice1 = ReadInterpolated(base + depth * lfo1);
-float voice2 = ReadInterpolated(base + depth * lfo2);
-float voice3 = ReadInterpolated(base + depth * lfo3);
-
-float wet = (voice1 + voice2 + voice3) / 3.0f;
+// コーラス: ドライ+ウェット、信号のビーティング
+float chorus(float x[], float* buf, float phase, float depth, float mix, float fs) {
+    float d = D_base + depth * sinf(phase);
+    float wet = ReadThiran(buf, d);
+    return x[0] * (1.f - mix) + wet * mix;
+}
 ```
 
-### ステレオ化
+### アンサンブル（3+ ボイス）
 
-左右のLFOを180°ずらすだけで広がりが出る：
-
-```cpp
-float lfo_l = sinf(phase);
-float lfo_r = sinf(phase + M_PI);  // 逆位相
-```
-
-### BBDエミュレーション（アナログコーラスの音）
-
-BBD（Bucket Brigade Device）チップのクセを再現：
+互いに公約数を持たない LFO レートで複数 BBD を駆動：
 
 ```cpp
-// 1. 帯域制限（BBDは5〜8kHz以上が出ない）
-float in_filtered = lpf_5khz.Process(in);
+float lfo_rates[] = {0.3f, 0.5f, 0.7f};  // Hz（互いに素 → ビーティングパターンが繰り返さない）
+float lfo_phases[3] = {0.f, 0.f, 0.f};
 
-// 2. わずかなクロックノイズを加える
-float clock_noise = white_noise() * 0.0001f;
-float delay_with_jitter = base_delay + clock_jitter * clock_noise;
-
-// 3. 出力のHFロールオフ
-float out = lpf_8khz.Process(wet);
+for (int i = 0; i < 3; i++) {
+    float d = D_base + depth * sinf(lfo_phases[i]);
+    lfo_phases[i] += 2.f * M_PI * lfo_rates[i] / sample_rate;
+    output += ReadThiran(buf[i], d) / 3.f;
+}
 ```
 
 ---
 
 ## 3. フランジャー（Flanger）
 
-### 原理
-
-コーラスよりずっと短いディレイ（1〜10ms）＋フィードバック。
-コムフィルターのノッチがLFOで掃引される → ジェット機サウンド。
-
-```
-ドライ ──────────────────────────────────────── ─→ 加算 → 出力
-         └→ [可変ディレイ 1〜10ms + LFO] ─┬→ ────────┘
-                 ↑                         │
-                 └──── フィードバック ───────┘
-```
-
 ### コムフィルターの周波数特性
 
-ディレイ時間 D のとき、ノッチ（キャンセル）は以下の周波数に発生：
+ディレイ d のときノッチ周波数（フィードバック = 0）：
 
 ```
-ノッチ周波数 fn = n / (2D)   (n = 1, 3, 5...)
-               ただし フィードバック = 0 の場合
+f_notch_k = (2k+1) × fs / (2×d)   [k = 0, 1, 2, ...]
 
-例: D = 5ms → ノッチ = 100Hz, 300Hz, 500Hz, 700Hz...（等間隔）
+例: d = 5 ms, fs = 48 kHz
+f_notch_0 = 48000 / (2×0.005×48000) = 100 Hz
+f_notch_1 = 300 Hz, f_notch_2 = 500 Hz ... (等間隔)
 ```
 
-LFOでDを変化させると全ノッチが同時に上下に掃引される。
-
-### フィードバックの効果
-
-```
-feedback = 0:  浅いコムフィルター、穏やかなスウィープ
-feedback = 0.7: ノッチが深くなり、独特の「鳴き」が出る
-feedback = 0.9: 非常に強いリング、ほぼ発振寸前
-feedback < 0:  位相を反転したフランジング（異なる音色）
-```
+LFO で d を変化させると全ノッチが同時に掃引される。
 
 ### スルーゼロフランジング（Through-Zero Flanging）
 
-ディレイ = 0ms を通過させると最も強いキャンセル（完全相殺）が発生。
-デジタルではルックアヘッドで実現：
+*Source: Doidic et al., US Patent (1997)*
 
-```cpp
-// 固定分のルックアヘッドを加える
-float max_mod_depth = 5.0f; // ms
-// 常に max_depth 分遅らせておき、LFOでその中を行き来する
-float delay_ms = max_mod_depth + lfo_val * max_mod_depth; // 0〜2×max
-// lfo_val = -1のとき delay = 0ms → スルーゼロ
+最も強烈なキャンセル（d=0 = 完全相殺）を実現するためにルックアヘッドを使う：
+
+```
+固定ルックアヘッド遅延: D_max = A_mod (変調深さと同じ)
+
+d_A(n) = D_max                                      (固定参照)
+d_B(n) = D_max + A × sin(2π × f_LFO × n / fs)     (変調)
+
+y[n] = x[n − D_max] + g × x[n − D_max − A×sin(2πf_LFO×n/fs)]
 ```
 
-### DSP実装
+sin = 0 のとき d_A = d_B → ゼロディレイ = 全周波数で完全キャンセル → 「ジェット機が通過する」瞬間。
 
 ```cpp
-float FlangerProcess(float in, float lfo_val) {
-    write_buf_[write_pos_] = in;
+class ThroughZeroFlanger {
+    float* buf_;
+    int write_pos_ = 0;
+    static const int BUF_SIZE = 8192;
+    float lfo_phase_ = 0.f;
 
-    float delay_ms = base_delay_ + depth_ * lfo_val;
-    float delay_samples = delay_ms * sample_rate_ / 1000.0f;
-    float wet = ReadInterpolated(delay_samples);
+public:
+    float Process(float in, float rate, float depth_samples, float feedback, float sample_rate) {
+        buf_[write_pos_] = in;
 
-    // フィードバック
-    float fb_sample = wet * feedback_;
-    write_buf_[write_pos_] = in + fb_sample;
+        float lfo_val = sinf(lfo_phase_);
+        lfo_phase_ += 2.f * M_PI * rate / sample_rate;
 
-    write_pos_ = (write_pos_ + 1) % BUF_SIZE;
-    return in + wet;  // ドライ+ウェット
-}
+        float D_max = depth_samples;
+        float d_mod = D_max + depth_samples * lfo_val;  // 0 〜 2×depth
+
+        float wet = ReadThiran(d_mod);           // スルーゼロ通過可能
+        buf_[write_pos_] = in + feedback * wet;  // フィードバック
+
+        write_pos_ = (write_pos_ + 1) % BUF_SIZE;
+        return in + wet;
+    }
+
+    float ReadThiran(float d) {
+        int   di   = (int)d;
+        float frac = d - di;
+        float a    = (1.f - frac) / (1.f + frac);  // Thiran N=1
+
+        int   i0   = (write_pos_ - di - 1 + BUF_SIZE) % BUF_SIZE;
+        float x0   = buf_[i0];
+        float x1   = buf_[(i0 - 1 + BUF_SIZE) % BUF_SIZE];
+        // ... IIR 状態保持が必要（簡略版）
+        return x0 + a * (x1 - x0);
+    }
+};
 ```
 
 ---
 
 ## 4. フェイザー（Phaser）
 
-### 原理
+### 1次オールパスフィルタの数学
 
-オールパスフィルターを多段通過 → 周波数によって位相がシフト → ドライ信号と合成するとノッチが発生。
-LFOでカットオフを変化させノッチを掃引。
+全周波数を通過させるが、カットオフ付近で位相を90°シフトする：
 
 ```
-入力 ─┬──────────────────────────────────────────→ ×0.5 ─→ 加算 → 出力
-      └→ [AP] → [AP] → [AP] → [AP] (4〜8段) → ×0.5 ────────┘
+H(z) = (α + z^{−1}) / (1 + α × z^{−1})
+
+α = (1 − tan(π × f₀ / fs)) / (1 + tan(π × f₀ / fs))
 ```
 
-### オールパスフィルター（1次）
+位相特性：
+```
+φ(f) = π − 2 × arctan(tan(π×f/fs) / tan(π×f₀/fs))
 
-全周波数を通過させるが、カットオフ付近で位相が最も大きく変化する：
-
-```cpp
-class AllpassFilter {
-    float state_ = 0.0f;
-    float coef_;  // -1 〜 +1
-
-public:
-    // fc: カットオフ周波数
-    void SetFreq(float fc, float sample_rate) {
-        float tan_w = tanf(M_PI * fc / sample_rate);
-        coef_ = (tan_w - 1.0f) / (tan_w + 1.0f);
-    }
-
-    float Process(float in) {
-        float out = coef_ * in + state_;
-        state_ = in - coef_ * out;
-        return out;
-    }
-};
+f = f₀ のとき φ = 90°（ノッチ位置）
+f → 0 のとき φ → π（180°位相シフト）
+f → fs/2 のとき φ → 0°
 ```
 
-### 段数と音の関係
+ドライ信号と混合するとノッチ（キャンセル）が f₀ に発生。
 
-| 段数 | ノッチ数 | 音の特性 |
-|------|---------|---------|
-| 2段 | 1 | 薄い、穏やか |
-| 4段 | 2 | 典型的なフェイザー |
-| 6段 | 3 | 豊か |
-| 8段 | 4 | 濃密 |
-| 12段 | 6 | 非常にリッチ |
+### 2次オールパスフィルタ
 
-偶数段のみ有効（奇数段だとDCゲインが変化する）。
+```
+k = tan(π × f₀ / fs)
+b0 = (1 − k/Q + k²) / (1 + k/Q + k²)
+b1 = 2×(k² − 1) / (1 + k/Q + k²)
+b2 = 1.0
+a1 = b1,  a2 = b0  // オールパス対称性: b0=a2, b1=a1
 
-### フェイザー vs フランジャーの違い
+y[n] = b0×x[n] + b1×x[n-1] + x[n-2] − a1×y[n-1] − a2×y[n-2]
+```
 
-| 項目 | フランジャー | フェイザー |
-|------|-----------|----------|
-| ノッチの配置 | 等間隔（調和的）| 非等間隔（非調和的）|
-| 音の印象 | ジェット機、強い | 滑らか、空気感 |
-| 実装 | ディレイ+フィードバック | オールパスフィルター |
+### MXR Phase 90 完全回路解析
+
+*Source: ElectroSmash / スクリプトロゴ版*
+
+| 部品 | 値 | 機能 |
+|------|-----|------|
+| R3, R4 | 470 kΩ | 入力電圧分割バイアス |
+| R6, R23, R25, R26, R28 | 24 kΩ | 帰還/位相シフト抵抗 |
+| R36 | 100 kΩ ポット | LFO レートコントロール |
+| C1–C4, C6, C9 | 47 nF | 位相シフトコンデンサ |
+| Q2–Q5 | 2N5952 JFET（マッチドペア）| 電圧制御抵抗 |
+| D2 | 5.1V ツェナー | バイアス基準 |
+| Op-amp | UA741CP ×6 | バッファ・積分器 |
+
+**JFET VCR 動作**:
+V_GS = 0V のとき r_DS ≈ 100〜500 Ω。
+カットオフ付近では r_DS → 2 MΩ。
+22kΩ と並列で最大実効抵抗を制限。
+4つの JFET は I_DSS の10%以内でマッチング必要。
+
+**LFO 回路**: シュミットトリガー → 矩形波 (0.5〜8 Hz) → Miller 積分器 → 三角波 (~4.5V ±2V)
+
+三角波 LFO は正弦波より対数周波数軸で一定速度 → より均一なスウィープ感。
+
+**静止時のノッチ周波数（C=47nF, R=24kΩ）**:
+```
+f_0 = 1/(2π×R×C) = 1/(2π×24k×47n) ≈ 141 Hz
+4段でノッチは 2 箇所: f₁ ≈ 58.5 Hz, f₂ ≈ 340.8 Hz
+```
+
+### EHX Small Stone 回路との比較
+
+| 特性 | MXR Phase 90 | EHX Small Stone |
+|------|-------------|----------------|
+| 可変素子 | 2N5952 JFET | CA3094 OTA |
+| 段数 | 4段（1次） | 4段（1次） |
+| ノッチ数 | 2 | 2 |
+| スウィープ範囲 | ~60〜500 Hz | ~100〜4 kHz |
+| 帰還 | オプション (R28) | スイッチ (Color) |
+| 特性 | 繊細、温かい | ワイド、ドラマチック |
+
+**OTA 型の特性**（CA3094）:
+```
+Gm = I_ABC / (2 × V_T)
+f_notch = Gm / (2π × C) = I_ABC / (2π × 2V_T × C)
+```
+バイアス電流 I_ABC が線形にノッチ周波数を制御 → LFO でスウィープ。
 
 ---
 
-## 5. トレモロ（Tremolo）
+## 5. Thiran 全域通過補間（高精度可変ディレイ）
 
-### 原理
+*Source: Thiran (1971), Laakso et al. "Splitting the Unit Delay" IEEE SPM 1996*
 
-音量（振幅）をLFOで変調。最もシンプルなモジュレーションエフェクト。
+### 線形補間の欠点
 
-```cpp
-float Process(float in) {
-    float lfo = lfo_.Process(rate_, sample_rate_);
-    float gain = 1.0f - depth_ * (lfo * 0.5f + 0.5f);  // 0.5〜1.0 に正規化
-    return in * gain;
+線形補間の振幅特性：
+```
+|H(ω)| = sqrt(1 − 4η(1−η)×sin²(ω/2))
+
+η = 0.5 (最悪ケース) のとき: Nyquist で完全ロールオフ → 高域が消える
+```
+
+### Thiran 1次 APF 補間
+
+```
+H(z) = (a + z^{-1}) / (1 + a × z^{-1})    (a は負の実数)
+
+a = (1 − D) / (1 + D)    D: 小数ディレイ（0.5 < D < 1.5）
+
+DC でのグループディレイ = D サンプル（最大平坦）
+振幅特性 = 1.0（全域通過 → 高域ロールオフなし）
+```
+
+### C 実装
+
+```c
+typedef struct { float a; float x1; float y1; } ThiranAP1;
+
+void thiran_set(ThiranAP1* f, float D) {
+    f->a = (1.0f - D) / (1.0f + D);
+}
+
+float thiran_process(ThiranAP1* f, float x) {
+    float y = f->a * x + f->x1 - f->a * f->y1;
+    f->x1 = x;
+    f->y1 = y;
+    return y;
+}
+
+// 整数部 + Thiran 小数部を組み合わせた読み出し
+float ReadThiran(float* buf, int write_pos, int buf_size, float delay_samples, ThiranAP1* ap) {
+    int   d_int  = (int)delay_samples;
+    float d_frac = delay_samples - d_int;
+
+    // 0.5 < D < 1.5 の範囲に収める
+    if (d_frac < 0.5f) { d_int++; d_frac += 1.0f; }
+
+    thiran_set(ap, d_frac);
+
+    float x = buf[(write_pos - d_int + buf_size) % buf_size];
+    return thiran_process(ap, x);
 }
 ```
 
-**注意**: `depth_ = 1.0` にすると LFO の谷でゲイン = 0（完全ミュート）。
-「揺れ感」を残したいなら depth は 0.7 程度が上限。
+### 高次 Thiran（N次一般式）
 
-### 波形による音の違い
+*Source: Laakso et al. 1996*
 
 ```
-サイン: 自然なうねり（ビンテージアンプ的）
-三角:   線形フェード（機械的）
-矩形:   オン/オフ（チョッピー、EDM的）
+a_k = (−1)^k × C(N,k) × ∏_{n=0}^{N} (D−N+n) / (D−N+k+n)
 ```
 
-### オートパン（ステレオトレモロ）
-
-左右を逆位相でLFO変調 → 音が左右に揺れる：
-
-```cpp
-float lfo = lfo_.Process(rate_, sample_rate_);
-float out_l = in * (1.0f + depth_ * lfo) * 0.5f;
-float out_r = in * (1.0f - depth_ * lfo) * 0.5f;
+N=2 (2次) の場合:
 ```
+a_1 = -2D / (D+1)
+a_2 = D(D-1) / (D+1)(D+2)   [近似式、詳細は論文参照]
+```
+
+高次ほど低周波域のグループディレイが正確になる。モジュレーション速度が遅いアプリ（コーラス、リバーブ）では N=1 で十分。
 
 ---
 
-## 6. ビブラート（Vibrato）
+## 6. LFO 波形の数学的分析
 
-ピッチ（音程）をLFOで変調。コーラスのドライをゼロにした状態と同じ。
+変調ディレイ `d(t) = D + A·w(t)` における瞬間 Doppler 周波数変化：
 
-```cpp
-float Process(float in) {
-    buf_[write_pos_] = in;
-    write_pos_ = (write_pos_ + 1) % BUF_SIZE;
-
-    float lfo = lfo_.Process(rate_, sample_rate_);
-    float delay_samples = base_delay_ + depth_ * lfo;  // ピッチ変調
-    return ReadInterpolated(delay_samples);             // ドライなし
-}
+```
+Δf(t) ≈ −f_carrier × A × w'(t) / fs
 ```
 
-`depth_` が大きいほどピッチ変化が激しい。
-クラシックのビブラートは ±50セント（半音の半分）程度。
+| LFO 波形 | w'(t) | 音の印象 |
+|---------|-------|---------|
+| 正弦波 | cosine（中心で最大速度）| 自然なうねり |
+| 三角波 | 一定（折り返し点で不連続）| 均一な Doppler、機械的 |
+| 矩形波 | ゼロ + インパルス | 2つの固定ディレイを切替（クリック要注意）|
+| のこぎり波 | 一定（リセット不連続）| 一方向ピッチシフト + リセット |
+
+**フランジャーのノッチ速度**: 対数周波数軸では高周波ほどスウィープが速い → 特徴的な「加速」感が得られる。
 
 ---
 
-## 7. 補間の重要性
-
-可変ディレイでサンプル間の読み出しには補間が必須。
-
-### 線形補間（シンプル）
-
-```cpp
-float ReadInterpolated(float delay) {
-    int d0 = (int)delay;
-    float frac = delay - d0;
-    int i0 = (write_pos_ - d0 + BUF_SIZE) % BUF_SIZE;
-    int i1 = (i0 - 1 + BUF_SIZE) % BUF_SIZE;
-    return buf_[i0] + frac * (buf_[i1] - buf_[i0]);
-}
-```
-
-欠点: 長いディレイで高域がロールオフする。
-
-### Thiran 全域通過補間（推奨）
-
-位相特性が平坦、高域ロールオフなし：
-
-```cpp
-// 1次Thiran APF（小数ディレイ補間）
-float thiran(float in, float d_frac, float& state) {
-    float a = (1.0f - d_frac) / (1.0f + d_frac);  // -1 < a < 1
-    float out = -a * in + state;
-    state = in + a * out;
-    return out;
-}
-```
-
----
-
-## 8. よくある問題と対策
+## 7. よくある問題と対策
 
 | 問題 | 原因 | 対策 |
 |------|------|------|
-| コーラスが薄い | 1ボイスのみ | 3〜4ボイスでLFO位相をずらす |
-| フランジャーが発振する | フィードバックが高すぎ | fb < 0.9 に制限 |
-| フェイザーが単調 | 段数が少ない | 6〜8段に増やす |
-| 音が揺れすぎる | LFO depth が大きすぎ | 控えめに設定 |
-| 高域がロールオフする | 線形補間 | Thiran APF補間に変更 |
-| アナログっぽくない | 完璧すぎる | わずかなジッター・バンド制限を追加 |
+| コーラスが薄い | 1ボイスのみ | 3〜4ボイス、LFO 位相をずらす |
+| フランジャーが発振 | FB が高すぎ | fb < 0.9 に制限 |
+| フェイザーが単調 | 段数が少ない | 6〜8段に増加 |
+| 高域ロールオフ | 線形補間 | Thiran APF 補間に変更 |
+| JFET マッチングが難しい | 個体差が大きい | デジタル実装では問題なし |
+| TZF のクリック | バッファ境界の不連続 | Hann 窓クロスフェード |
 
 ---
 
-## 9. 参考文献
+## 8. 参考文献
 
-- [iZotope - Understanding Chorus, Flangers, and Phasers](https://www.izotope.com/en/learn/understanding-chorus-flangers-and-phasers-in-audio-production.html)
-- Zölzer, U. *DAFX: Digital Audio Effects* — モジュレーションの章
-- [Smith, J.O. - Introduction to Digital Filters](https://ccrma.stanford.edu/~jos/filters/) — オールパスフィルター
+| 論文/資料 | 内容 |
+|---------|------|
+| Laakso et al., IEEE SPM (1996) | "Splitting the Unit Delay" — Thiran APF 補間の完全解説 |
+| Thiran (1971) | Maximally flat group delay APF の原論文 |
+| Doidic et al., US Patent (1997) | スルーゼロフランジング特許 |
+| [ElectroSmash - MXR Phase 90](https://www.electrosmash.com/phase90-mxr-analysis) | 完全回路解析 |
+| Zölzer, *DAFX* | モジュレーション効果の章 |
+| Smith, J.O., *Physical Audio Signal Processing* | APF 設計理論 |
