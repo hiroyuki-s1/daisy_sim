@@ -101,13 +101,22 @@ return in * gain_linear * makeup_gain;
 
 指数平滑フィルターの時定数 τ と係数 α の関係:
 
-```
-出力が目標値の (1 - 1/e) ≈ 63.2% に達するまでの時間 = τ
-係数 α = exp(-1 / (τ × fs))
+**Giannoulis 2012 の定義** — 目標値の90%（-10dB点）に達する時間を tA とする:
 
-例: attack = 10ms, fs = 48000
-τ = 0.010 × 48000 = 480 samples
-α = exp(-1/480) = 0.99791
+```
+α = exp(-ln(9) / (tA × fs))     [Giannoulis 2012 JAES 準拠]
+  = exp(-2.197 / (tA × fs))
+```
+
+**一般的な変換表**:
+
+```
+規約                       | 係数 α
+---------------------------|------------------------------------------
+目標値の 90% (-10dB) = tA  | α = exp(-ln(9)/(tA·fs))   [Giannoulis]
+目標値の 99.9% (-60dB) = tA | α = exp(-6.908/(tA·fs))
+目標値の 1/e ≈ 63%  = τ    | α = exp(-1/(τ·fs))        [RC回路等価]
+目標値の -3dB ≈ 29% = τ    | α = exp(-0.693/(τ·fs))
 ```
 
 **ゼロアタック（Peak Limiter専用）**:
@@ -115,6 +124,15 @@ return in * gain_linear * makeup_gain;
 ```
 α = 0  → g[n] = target_gain[n] (即時追従)
 ```
+
+**Decoupled smoother（Giannoulis 式 6,7）**:
+
+```
+yCL[n] = max(gC[n],  αR · yCL[n-1] + (1-αR) · gC[n])
+gs[n]  = αA · gs[n-1] + (1-αA) · yCL[n]
+```
+
+この2段構成により、リリース方向はリリース時定数、アタック方向はアタック時定数が独立に効く。
 
 ---
 
@@ -467,7 +485,9 @@ R_out = compressed_mid - side;
 
 ---
 
-## 8. リミッター
+## 8. リミッター・ゲート・エキスパンダー
+
+### ハードリミッター (ratio → ∞)
 
 ```cpp
 float Limiter::Process(float in) {
@@ -479,6 +499,40 @@ float Limiter::Process(float in) {
     return in;
 }
 ```
+
+ゲイン計算式:
+```
+gc(x) = T       if x > T    (閾値で頭打ち)
+gc(x) = x       if x ≤ T
+g_c(dB) = min(0,  T - x_dB)
+```
+
+### ノイズゲート (Downward Expansion)
+
+閾値以下の音を静かにする (ratio < 1):
+
+```
+gc(x_dB) = T + R·(x_dB - T)    if x_dB < T    [R < 1 → 閾値以下をさらに下げる]
+gc(x_dB) = x_dB                 if x_dB ≥ T
+
+例: R=0.1, T=-40dB, x=-50dB → gc = -40 + 0.1×(-10) = -41dB (わずかな減衰)
+     R→0 (ハードゲート): x < T → -∞dB (完全無音)
+```
+
+```cpp
+float NoiseGate(float x_db, float T, float R) {
+    if (x_db < T) return T + R * (x_db - T);
+    return x_db;
+}
+```
+
+### エキスパンダー (Upward Expansion)
+
+```
+gc(x_dB) = T + R·(x_dB - T)    if x_dB < T    [R > 1 → 閾値以下をより下げる]
+```
+
+R=2 でダイナミックレンジ2倍（自然なトランジェント強調に使える）。
 
 ### ブリックウォールリミッター（ISP防止）
 

@@ -64,22 +64,36 @@ N. Koren (1996). "Improved Vacuum Tube Models for SPICE Simulations." *Glass Aud
 | 管種 | µ | Kg1 | Kp | Ex | 用途 |
 |------|---|-----|----|----|------|
 | **12AX7** (ECC83) | 100 | 1060 | 600 | 1.4 | プリアンプ最高ゲイン |
-| **12AU7** (ECC82) | 17  | 450  | 310 | 1.3 | バッファ、低インピーダンス |
+| **12AU7** (ECC82) | 20  | 450  | 310 | 1.3 | バッファ、低インピーダンス |
 | **12AT7** (ECC81) | 60  | 460  | 300 | 1.35| フェーズインバーター |
-| **EL34** | 11  | 650  | 60  | 1.35| パワーアンプ (Marshall) |
+| **EL34** (pentode) | 11  | 650  | 60  | 1.35| パワーアンプ (Marshall) |
 | **6L6GC** | 8   | 900  | 48  | 1.4 | パワーアンプ (Fender) |
 | **EL84** (6BQ5) | 40  | 1030 | 60  | 1.45| パワーアンプ (Vox AC30) |
+
+**実用パラメータ早見表** (典型動作点での小信号特性):
+
+| 管種 | gm (mA/V) | rp (kΩ) | Vp_typ | Ip_typ | 代表機器 |
+|------|-----------|---------|--------|--------|---------|
+| 12AX7 | 1.6 | 62 | 250V | 1.2mA | Marshall, Fender プリ段 |
+| 12AU7 | 3.0 | 7  | 250V | 10mA  | カソードフォロワ |
+| 12AT7 | 5.5 | 11 | 250V | 10mA  | フェーズインバーター |
+| EL34  | 11  | 15 | 400V | 70mA  | Marshall パワー管 |
+| 6L6GC | 9   | 22 | 450V | 72mA  | Fender パワー管 |
+| EL84  | 11.3| 38 | 300V | 48mA  | Vox AC30 |
 
 ```cpp
 struct TubeParams {
     float mu, kg1, kp, kvb, ex;
+    float kg2, kxg2;   // ペントード用追加パラメータ
 };
 
-// 代表パラメータ
-static const TubeParams TUBE_12AX7 = { 100.0f, 1060.0f, 600.0f, 300.0f, 1.4f };
-static const TubeParams TUBE_EL34  = {  11.0f,  650.0f,  60.0f, 300.0f, 1.35f};
-static const TubeParams TUBE_6L6GC = {   8.0f,  900.0f,  48.0f, 300.0f, 1.4f };
-static const TubeParams TUBE_EL84  = {  40.0f, 1030.0f,  60.0f, 300.0f, 1.45f};
+// 三極管
+static const TubeParams TUBE_12AX7 = { 100.0f, 1060.0f, 600.0f, 300.0f, 1.4f,  0,    0    };
+static const TubeParams TUBE_12AU7 = {  20.0f,  450.0f, 310.0f, 300.0f, 1.3f,  0,    0    };
+// ペントード (EL34: Kg2, Kxg2 はスクリーン電流用)
+static const TubeParams TUBE_EL34  = {  11.0f,  650.0f,  60.0f, 300.0f, 1.35f, 4200.0f, 4.0f};
+static const TubeParams TUBE_6L6GC = {   8.0f,  900.0f,  48.0f, 300.0f, 1.4f,  4500.0f, 3.5f};
+static const TubeParams TUBE_EL84  = {  40.0f, 1030.0f,  60.0f, 300.0f, 1.45f, 4200.0f, 4.0f};
 
 float KorenPlateCurrentFull(const TubeParams& t, float vgk, float vp) {
     if (vp < 0.01f) return 0.0f;
@@ -182,17 +196,17 @@ public:
   R4 = 56kΩ  (固定抵抗)
 ```
 
-**Marshall JCM800 トーンスタック**:
+**Marshall JCM800 トーンスタック** (ElectroSmash 実測):
 
 ```
-  C1 = 47nF  (Treble)
-  C2 = 4.7nF
-  C3 = 22nF
-  R1 = 220kΩ (Bass pot)
-  R2 = 1MΩ
-  R3 = 22kΩ  (Middle pot, 固定)
-  R4 = 33kΩ
-  R5 = 33kΩ  (Treble pot, 固定)
+  R_bass   = 500kΩ (Bass pot)
+  R_mid    = 25kΩ  (Middle pot)
+  R_treble = 250kΩ (Treble pot)
+  R1       = 33kΩ  (固定)
+  C1       = 500pF (Treble)
+  C2       = 22nF  (Bass path)
+  C3       = 22nF  (Mid path)
+  C4       = 47nF  (coupling)
 ```
 
 **Vox AC30 トーンスタック** (Cut control):
@@ -469,6 +483,73 @@ float ConvolveIR(float in, const float* ir, float* input_buf,
 1. **測定**: スウィープ信号をキャビネットに通して録音
 2. **既製品**: Celestion、OwnHammer、Helix などのIRライブラリを購入
 3. **フリー**: Guitar Hacktics、3 Sigma Audio など
+
+---
+
+## 5a. 出力トランスとスピーカーモデル
+
+### 出力トランスファー
+
+EL34 プッシュプル構成の出力トランス (JCM800):
+
+```
+ターン比 n = sqrt(Z_primary / Z_load)
+  Z_primary (plate-to-plate) ≈ 3.4kΩ
+  Z_load = 8Ω (スピーカー)
+  n = sqrt(3400/8) ≈ 20.6 → 巻数比 ≈ 20:1 (片側)
+```
+
+**非理想特性**:
+```
+漏れインダクタンス Ll ≈ 1〜10 mH → スピーカーケーブル容量と共振
+一次インダクタンス Lp ≈ 5〜20 H → 低域カットオフ: f_low = Rp/(2π·Lp)
+コア飽和 Bs ≈ 1.5T (大音量で高調波歪み増加)
+```
+
+### スピーカーインピーダンス (Thiele-Small パラメータ)
+
+実際のスピーカーはインピーダンスが周波数依存:
+
+```
+Z_speaker(f) = Re + jωL_vc + Z_motional(f)
+
+Z_motional = (BL)² / (Rm + jωMm + 1/(jωCm))
+
+代表的な12インチギタースピーカー (Celestion G12M等):
+  Re    = 6Ω   (DCインピーダンス、定格8Ωより低い)
+  L_vc  = 0.5mH (ボイスコイルインダクタンス)
+  BL    = 12 T·m (フォースファクター)
+  Mm    = 25 g  (ムービングマス)
+  Cm    = 0.3 mm/N (コンプライアンス)
+  Rm    = 2.0 N·s/m (機械的減衰)
+  fs    = 75 Hz (共振周波数)  = 1/(2π·sqrt(Mm·Cm))
+```
+
+共振でインピーダンスは公称値の3〜5倍に上昇:
+
+```
+Z_peak = Re + (BL)²/Rm ≈ 6 + 72 = 78Ω  @ fs
+```
+
+**管球アンプとの相互作用**: 出力インピーダンスが高いため (ダンピングファクター ≈ 2〜5)、
+スピーカー共振でバスが持ち上がる → 「暖かい」低域の正体。
+
+```cpp
+// スピーカーZ の近似デジタルモデル (1次 LPF + 共振ピーク)
+class SpeakerModel {
+    Biquad resonance_peak_;   // fs での共振
+    Biquad hf_rolloff_;       // 高域ロールオフ (L_vc)
+    float Re_ = 6.0f;
+
+    float Process(float in) {
+        // 共振ピーク (fs=75Hz, Q≈3)
+        float rez = resonance_peak_.Process(in);
+        // 高域ロールオフ (fc=5kHz)
+        float hf = hf_rolloff_.Process(rez);
+        return hf;
+    }
+};
+```
 
 ---
 
